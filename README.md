@@ -1,5 +1,8 @@
 # NightWatch — Privacy-Preserving Elderly Care Monitoring System
 
+
+
+
 ## Overview
 
 **NightWatch** is a camera-free, privacy-first elderly care monitoring system that detects **indoor location**, **fall events**, and **sleep vitals** using a multi-sensor fusion approach — all without any camera or microphone.
@@ -88,7 +91,7 @@ The system combines **UWB-based indoor localization**, **60 GHz mmWave radar sen
 | Power (mmWave) | TP4056 + 18650 Li-ion + 3.7V→5V step-up | mmWave node power | 1 |
 | Power (Tag) | Li-Po charger + 1000mAh Li-Po + 3.7V→5V step-up | Wearable tag power | 1 |
 
-**Estimated BOM: ₹33,162**
+
 
 ---
 
@@ -112,6 +115,18 @@ The system combines **UWB-based indoor localization**, **60 GHz mmWave radar sen
 *ESP32-WROOM + DFRobot C1001 (60 GHz), UART connection on GPIO16/17, powered by 18650 Li-ion*
 
 ![mmWave Node Wiring](hardware/images/mmwave_node_wiring.jpeg)
+
+---
+
+### Hardware Photos
+
+| UWB Anchor (inside enclosure) | Wearable Tag (wrist-worn) |
+|:---:|:---:|
+| ![UWB Anchor](hardware/images/uwb_anchor_.jpeg) | ![Tag worn on wrist](hardware/images/tag_worn.jpeg) |
+
+| UWB Tag + IMU (bottom view) | mmWave Radar Node (inside enclosure) |
+|:---:|:---:|
+| ![UWB Tag + IMU bottom](hardware/images/uwb_tag___imu__bottom_side_.jpeg) | ![mmWave Node](hardware/images/mmwave_node.jpeg) |
 
 ---
 
