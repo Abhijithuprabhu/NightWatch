@@ -1,0 +1,2141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NightWatch — Care Monitoring</title>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e1117;
+  --s1: #161b25;
+  --s2: #1c2333;
+  --s3: #232d40;
+  --border: #2a3448;
+  --text: #e4ecff;
+  --muted: #5a6a85;
+  --blue: #4f88ff;
+  --blue-d: #1a2d60;
+  --teal: #00c8aa;
+  --teal-d: #002f2a;
+  --amber: #f5a623;
+  --amber-d: #2d1f00;
+  --red: #ff5252;
+  --red-d: #2d0a0a;
+  --green: #35d07f;
+  --green-d: #062616;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --r: 14px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;min-height:100vh;}
+
+/* TOP BAR */
+.topbar{
+  height:58px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;border-bottom:1px solid var(--border);background:var(--s1);
+}
+.logo-wrap{display:flex;align-items:center;gap:10px;}
+.logo-icon{
+  width:34px;height:34px;border-radius:8px;
+  background:linear-gradient(135deg,var(--blue),#7b4fff);
+  display:flex;align-items:center;justify-content:center;font-size:1rem;
+}
+.logo-name{font-size:1.1rem;font-weight:800;color:var(--text);letter-spacing:-0.5px;}
+.logo-sub{font-size:0.58rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;}
+.top-chips{display:flex;gap:8px;align-items:center;}
+.chip2{
+  padding:4px 12px;border-radius:20px;font-size:0.65rem;font-weight:600;
+  border:1px solid;display:flex;align-items:center;gap:5px;letter-spacing:0.5px;
+}
+.chip-live{color:var(--green);border-color:rgba(53,208,127,0.3);background:var(--green-d);}
+.chip-warn{color:var(--amber);border-color:rgba(245,166,35,0.3);background:var(--amber-d);}
+.chip-muted{color:var(--muted);border-color:var(--border);background:var(--s1);}
+.chip-red{color:var(--red);border-color:rgba(255,82,82,0.3);background:var(--red-d);}
+.chip-off{color:var(--muted);border-color:var(--border);background:var(--s2);opacity:0.6;}
+.chip2::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;animation:cpulse 1.5s infinite;}
+@keyframes cpulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.top-right{display:flex;align-items:center;gap:12px;}
+.ward-info{text-align:right;}
+.ward-name{font-size:0.82rem;font-weight:600;}
+.ward-time{font-size:0.65rem;color:var(--muted);font-family:'Fira Code',monospace;}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:280px 1fr 260px;gap:1px;background:var(--border);min-height:calc(100vh - 58px);}
+.col{background:var(--bg);padding:18px;display:flex;flex-direction:column;gap:14px;}
+
+/* CARD */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:16px;position:relative;overflow:hidden;}
+.card-label{font-size:0.58rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;}
+
+/* PATIENT */
+.pat-header{display:flex;align-items:center;gap:12px;}
+.pat-ava{
+  width:56px;height:56px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,var(--s3),var(--s2));
+  border:2px solid var(--blue);display:flex;align-items:center;justify-content:center;
+  font-size:1.5rem;box-shadow:0 0 16px rgba(79,136,255,0.3);
+  position:relative;
+}
+.online-dot{position:absolute;bottom:2px;right:2px;width:10px;height:10px;border-radius:50%;background:var(--green);border:2px solid var(--s1);transition:background .4s;}
+.pat-info .pat-name{font-size:1.05rem;font-weight:800;letter-spacing:-0.3px;}
+.pat-info .pat-tag{font-size:0.65rem;color:var(--muted);margin-top:2px;font-family:'Fira Code',monospace;}
+
+.meta-pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.mpill{padding:3px 10px;border-radius:20px;font-size:0.65rem;font-weight:600;background:var(--s2);border:1px solid var(--border);}
+.mpill-red{background:var(--red-d);border-color:rgba(255,82,82,0.3);color:var(--red);}
+.mpill-amb{background:var(--amber-d);border-color:rgba(245,166,35,0.3);color:var(--amber);}
+.mpill-grn{background:var(--green-d);border-color:rgba(53,208,127,0.3);color:var(--green);}
+.mpill-blue{background:var(--blue-d);border-color:rgba(79,136,255,0.3);color:var(--blue);}
+
+.info-table{width:100%;border-collapse:collapse;font-size:0.74rem;}
+.info-table td{padding:6px 0;border-bottom:1px solid var(--border);}
+.info-table td:first-child{color:var(--muted);width:40%;}
+.info-table td:last-child{font-weight:600;text-align:right;}
+
+.vital-big{display:flex;flex-direction:column;gap:10px;}
+.vb-row{
+  display:flex;justify-content:space-between;align-items:center;
+  background:var(--s2);border-radius:10px;padding:10px 12px;
+  border:1px solid var(--border);transition:border-color .3s;
+}
+.vb-row.alert-flash{border-color:var(--red);animation:flash .5s ease;}
+@keyframes flash{0%,100%{border-color:var(--red)}50%{border-color:rgba(255,82,82,0.2)}}
+.vb-left{font-size:0.68rem;color:var(--muted);}
+.vb-val{font-family:'Fira Code',monospace;font-size:1rem;font-weight:500;}
+.vb-val.ok{color:var(--green);}
+.vb-val.warn{color:var(--amber);}
+.vb-val.alert{color:var(--red);}
+
+/* CENTER */
+.map-card2{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.map-topbar{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border);}
+.map-t{font-size:0.88rem;font-weight:700;}
+.map-t span{color:var(--blue);}
+.btns{display:flex;gap:8px;}
+.dbtn{
+  padding:6px 12px;border-radius:8px;font-size:0.68rem;font-weight:700;
+  border:none;cursor:pointer;font-family:inherit;transition:all 0.15s;
+  display:flex;align-items:center;gap:4px;
+}
+.dbtn-ghost{background:var(--s2);color:var(--text);border:1px solid var(--border);}
+.dbtn-ghost:hover{border-color:var(--blue);color:var(--blue);}
+.dbtn-blue{background:linear-gradient(135deg,var(--blue),#7b4fff);color:white;}
+
+canvas#c2{display:block;background:var(--s1);}
+.edit-toolbar2{
+  display:none;padding:10px 16px;border-top:1px solid var(--border);
+  flex-wrap:wrap;gap:6px;align-items:center;background:var(--s2);
+}
+.edit-toolbar2.on{display:flex;}
+.etb{
+  padding:5px 10px;font-size:0.65rem;font-family:inherit;font-weight:600;
+  border-radius:6px;border:1px solid var(--border);background:var(--s3);
+  color:var(--text);cursor:pointer;transition:all 0.15s;
+}
+.etb:hover,.etb.sel{border-color:var(--blue);color:var(--blue);background:var(--blue-d);}
+
+/* Anchor form */
+.anchor-section{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:16px;}
+.as-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.as-title{font-size:0.72rem;font-weight:700;color:var(--text);}
+.anchor-form2{display:none;margin-top:12px;flex-direction:column;gap:10px;}
+.anchor-form2.open{display:flex;}
+.fg{display:flex;flex-direction:column;gap:3px;}
+.fl{font-size:0.6rem;color:var(--muted);font-weight:600;letter-spacing:0.5px;}
+.fi{
+  padding:7px 10px;background:var(--s3);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-size:0.75rem;font-family:inherit;outline:none;
+  transition:border-color 0.15s;
+}
+.fi:focus{border-color:var(--blue);}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
+/* IMU */
+.imu-grid2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;}
+.ig2{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;}
+.ig2-l{font-size:0.55rem;color:var(--muted);letter-spacing:1px;}
+.ig2-v{font-family:'Fira Code',monospace;font-size:0.92rem;margin-top:3px;font-weight:500;}
+
+/* Orientation row */
+.orient-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;}
+.or-box{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center;}
+.or-l{font-size:0.52rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+.or-v{font-family:'Fira Code',monospace;font-size:0.82rem;margin-top:2px;font-weight:500;}
+
+/* Heading gauge */
+.heading-card{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;align-items:center;gap:16px;}
+.compass2{width:56px;height:56px;position:relative;flex-shrink:0;}
+.cring{width:56px;height:56px;border-radius:50%;border:2px solid var(--border);background:var(--s3);position:relative;overflow:hidden;}
+.cneedle{
+  position:absolute;width:2px;height:20px;
+  left:50%;bottom:50%;margin-left:-1px;
+  background:var(--red);border-radius:2px;
+  transform-origin:bottom center;transform:rotate(0deg);
+  transition:transform 0.6s ease;
+}
+.cnorth{height:16px;background:var(--blue);}
+.h-val{font-size:1.8rem;font-weight:800;color:var(--blue);font-family:'Fira Code',monospace;}
+.h-dir{font-size:0.7rem;color:var(--muted);margin-top:2px;}
+
+/* Signal quality */
+.sig-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.72rem;}
+.sig-row:last-child{border:none;}
+.sig-bar{flex:1;height:5px;background:var(--s3);border-radius:3px;overflow:hidden;}
+.sig-fill{height:100%;border-radius:3px;transition:width .4s ease;}
+
+/* Feed */
+.feed2{display:flex;flex-direction:column;overflow-y:auto;max-height:220px;}
+.f2item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);align-items:flex-start;}
+.f2item:last-child{border:none;}
+.f2dot{width:6px;height:6px;border-radius:50%;margin-top:5px;flex-shrink:0;}
+.f2text{font-size:0.7rem;color:var(--text);}
+.f2time{font-size:0.6rem;color:var(--muted);font-family:'Fira Code',monospace;}
+
+/* UWB ranges */
+.range-card{background:var(--s2);border-radius:10px;padding:12px;border:1px solid var(--border);}
+.rrow{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.72rem;}
+.rrow:last-child{border:none;}
+.rname{color:var(--muted);}
+.rval{font-family:'Fira Code',monospace;font-weight:500;}
+
+/* Live badge */
+.live-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:0.6rem;font-weight:700;color:var(--green);
+  background:var(--green-d);border:1px solid rgba(53,208,127,0.3);
+  border-radius:20px;padding:2px 8px;
+}
+.live-badge::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green);animation:cpulse 1.2s infinite;}
+.offline-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:0.6rem;font-weight:700;color:var(--muted);
+  background:var(--s2);border:1px solid var(--border);
+  border-radius:20px;padding:2px 8px;
+}
+.offline-badge::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--muted);}
+
+/* ── Room shape labels ── */
+.shape-label-input{
+  position:absolute;background:rgba(14,17,23,0.92);border:1px solid var(--blue);
+  border-radius:6px;padding:4px 8px;font-size:0.68rem;color:var(--text);
+  font-family:'Plus Jakarta Sans',sans-serif;outline:none;z-index:100;width:160px;
+}
+/* ── Patient Edit Modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:28px;width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.6);}
+.modal-box::-webkit-scrollbar{width:4px;}
+.modal-box::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.modal-title{font-size:1rem;font-weight:800;margin-bottom:4px;}
+.modal-sub{font-size:0.7rem;color:var(--muted);margin-bottom:20px;}
+.edit-section{margin-bottom:18px;}
+.edit-section-title{font-size:0.6rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;}
+.edit-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.edit-row.full{grid-template-columns:1fr;}
+.edit-field{display:flex;flex-direction:column;gap:3px;}
+.edit-label{font-size:0.6rem;color:var(--muted);font-weight:600;letter-spacing:0.5px;}
+.edit-input{padding:7px 10px;background:var(--s3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.75rem;font-family:inherit;outline:none;transition:border-color .15s;}
+.edit-input:focus{border-color:var(--blue);}
+.pill-editor{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+.pill-check{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.68rem;}
+.pill-check input{accent-color:var(--blue);}
+.history-entry{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;position:relative;}
+.history-entry textarea{width:100%;background:transparent;border:none;outline:none;color:var(--text);font-size:0.72rem;font-family:inherit;resize:none;line-height:1.4;}
+.del-btn{position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.7rem;padding:2px 4px;border-radius:4px;}
+.del-btn:hover{color:var(--red);}
+/* ── Report Modal ── */
+.report-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:400;align-items:flex-start;justify-content:center;padding:20px;}
+.report-modal.open{display:flex;}
+.report-box{background:#fff;color:#111;border-radius:16px;width:720px;max-height:92vh;overflow-y:auto;box-shadow:0 8px 48px rgba(0,0,0,0.7);font-family:'Plus Jakarta Sans',sans-serif;}
+.report-box::-webkit-scrollbar{width:4px;}
+.report-topbar{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:2px solid #e5e7ef;background:#f8f9fc;border-radius:16px 16px 0 0;position:sticky;top:0;z-index:1;}
+.report-topbar-title{font-size:0.88rem;font-weight:800;color:#1a1f2e;}
+.report-actions{display:flex;gap:8px;}
+.rpt-btn{padding:6px 14px;border-radius:8px;font-size:0.7rem;font-weight:700;border:none;cursor:pointer;font-family:inherit;}
+.rpt-btn-pdf{background:#4f88ff;color:#fff;}
+.rpt-btn-close{background:#eee;color:#555;}
+#reportContent{padding:24px;}
+.rpt-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #e5e7ef;}
+.rpt-logo{font-size:1.1rem;font-weight:800;color:#1a1f2e;}
+.rpt-logo small{display:block;font-size:0.6rem;color:#8090a8;letter-spacing:1.5px;text-transform:uppercase;font-weight:400;}
+.rpt-date{font-size:0.7rem;color:#8090a8;text-align:right;}
+.rpt-section{margin-bottom:18px;}
+.rpt-section-title{font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;color:#8090a8;font-weight:700;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid #e5e7ef;}
+.rpt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.rpt-cell{background:#f8f9fc;border-radius:8px;padding:8px 10px;}
+.rpt-cell-l{font-size:0.6rem;color:#8090a8;text-transform:uppercase;letter-spacing:.5px;}
+.rpt-cell-v{font-size:0.82rem;font-weight:700;color:#1a1f2e;margin-top:2px;}
+.rpt-history-item{border-left:3px solid #4f88ff;padding:6px 10px;margin-bottom:8px;background:#f8f9fc;border-radius:0 6px 6px 0;}
+.rpt-history-item .rpt-hist-date{font-size:0.62rem;color:#8090a8;}
+.rpt-history-item .rpt-hist-text{font-size:0.75rem;color:#1a1f2e;margin-top:2px;}
+.rpt-vitals-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+.rpt-vital-chip{background:#f0f4ff;border:1px solid #d0dcff;border-radius:20px;padding:3px 10px;font-size:0.68rem;color:#3355cc;}
+.rpt-vital-chip.alert{background:#fff0f0;border-color:#ffcccc;color:#cc2222;}
+
+/* Toggle switch */
+.tog-wrap{cursor:pointer;}
+.tog-track{
+  width:32px;height:16px;border-radius:8px;position:relative;
+  transition:background .2s;
+}
+.tog-track.on {background:var(--blue);}
+.tog-track.off{background:var(--s3);border:1px solid var(--border);}
+.tog-thumb{
+  position:absolute;top:2px;width:12px;height:12px;
+  border-radius:50%;background:white;transition:left .2s;
+  box-shadow:0 1px 4px rgba(0,0,0,0.4);
+}
+.tog-track.on  .tog-thumb{left:18px;}
+.tog-track.off .tog-thumb{left:2px;}
+
+/* mmWave panel */
+.mmw-mode-bar{display:flex;gap:6px;margin-bottom:12px;}
+.mmw-btn{
+  flex:1;padding:7px 4px;border-radius:8px;font-size:0.68rem;font-weight:700;
+  border:none;cursor:pointer;font-family:inherit;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;gap:4px;
+}
+.mmw-btn-fall{background:var(--blue-d);color:var(--blue);border:1px solid rgba(79,136,255,0.35);}
+.mmw-btn-fall:hover,.mmw-btn-fall.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+.mmw-btn-sleep{background:var(--teal-d);color:var(--teal);border:1px solid rgba(0,200,170,0.35);}
+.mmw-btn-sleep:hover,.mmw-btn-sleep.active{background:var(--teal);color:#fff;border-color:var(--teal);}
+.mmw-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.mmw-tile{
+  background:var(--s2);border:1px solid var(--border);border-radius:10px;
+  padding:10px 8px;text-align:center;transition:border-color .3s,background .3s;
+}
+.mmw-tile.lit{border-color:var(--teal);background:rgba(0,200,170,0.05);}
+.mmw-tile.alert{border-color:var(--red);background:rgba(255,82,82,0.08);}
+.mmw-tile-l{font-size:0.55rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+.mmw-tile-v{font-family:'Fira Code',monospace;font-size:1.05rem;font-weight:700;margin-top:4px;}
+.mmw-status-bar{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;
+  background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  font-size:0.7rem;transition:all .3s;margin-bottom:10px;
+}
+.mmw-status-bar.switching{border-color:var(--blue);background:var(--blue-d);}
+.mmw-status-bar.stabilizing{border-color:var(--amber);background:var(--amber-d);}
+.mmw-status-bar.live{border-color:var(--teal);background:var(--teal-d);}
+.mmw-status-bar.radarfall{border-color:var(--red);background:var(--red-d);animation:alertpulse2 .6s ease infinite alternate;}
+@keyframes alertpulse2{from{opacity:1}to{opacity:0.6}}
+.mmw-icon{font-size:1.1rem;flex-shrink:0;}
+.mmw-txt{flex:1;}
+.mmw-txt b{display:block;font-weight:700;}
+.mmw-txt small{color:var(--muted);font-size:0.62rem;}
+.sleep-bar{display:flex;align-items:flex-end;gap:2px;height:20px;margin-top:4px;}
+.sleep-bar span{
+  width:3px;border-radius:2px;background:var(--teal);
+  animation:breathe 2s ease-in-out infinite;
+}
+.sleep-bar span:nth-child(1){height:8px;animation-delay:0s;}
+.sleep-bar span:nth-child(2){height:14px;animation-delay:.3s;}
+.sleep-bar span:nth-child(3){height:20px;animation-delay:.6s;}
+.sleep-bar span:nth-child(4){height:14px;animation-delay:.9s;}
+.sleep-bar span:nth-child(5){height:8px;animation-delay:1.2s;}
+@keyframes breathe{0%,100%{opacity:.25}50%{opacity:1}}
+.sleep-bar.stopped span{animation:none;opacity:.2;}
+
+#fallAlert{
+  display:none;position:fixed;top:66px;left:50%;transform:translateX(-50%);
+  background:var(--red-d);border:2px solid var(--red);border-radius:12px;
+  padding:10px 24px;font-size:0.82rem;font-weight:700;color:var(--red);
+  z-index:500;animation:alertpulse 0.5s ease infinite alternate;
+  box-shadow:0 0 32px rgba(255,82,82,0.4);
+}
+@keyframes alertpulse{from{opacity:1}to{opacity:0.6}}
+</style>
+</head>
+<body>
+
+<!-- Fall alert banners -->
+<div id="fallAlert">⚠️ UWB: Patient near room boundary!</div>
+<div id="mmwFallAlert" style="display:none;position:fixed;top:108px;left:50%;transform:translateX(-50%);
+  background:var(--red-d);border:2px solid var(--red);border-radius:12px;
+  padding:10px 24px;font-size:0.82rem;font-weight:700;color:var(--red);
+  z-index:500;animation:alertpulse 0.5s ease infinite alternate;
+  box-shadow:0 0 40px rgba(255,82,82,0.6);">
+  🚨 mmWave FALL DETECTED — Immediate attention required!
+</div>
+
+<div class="topbar">
+  <div class="logo-wrap">
+    <div class="logo-icon">🌙</div>
+    <div>
+      <div class="logo-name">NightWatch</div>
+      <div class="logo-sub">Geriatric Care Monitor</div>
+    </div>
+  </div>
+  <div class="top-chips">
+    <div class="chip2 chip-live" id="trackChip">TRACKING ACTIVE</div>
+    <div class="chip2 chip-warn" id="riskChip">FALL RISK: HIGH</div>
+    <div class="chip2 chip-muted" id="connChip">WAITING…</div>
+    <div class="chip2 chip-off" id="mmwChip">mmWave OFFLINE</div>
+  </div>
+  <div class="top-right">
+    <div class="ward-info">
+      <div class="ward-name">ICU Ward — Bed 3</div>
+      <div class="ward-time" id="clk2">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+<!-- ── LEFT ── -->
+<div class="col">
+  <div class="card">
+    <div class="pat-header">
+      <div class="pat-ava" id="patAvatar">👵<div class="online-dot" id="onlineDot"></div></div>
+      <div class="pat-info">
+        <div class="pat-name" id="patName">Leela Krishnan</div>
+        <div class="pat-tag" id="patTag">TAG: NW-017 · Ward ICU-3</div>
+      </div>
+    </div>
+    <div class="meta-pills" id="metaPills">
+      <div class="mpill mpill-red">⚠ Fall Risk</div>
+      <div class="mpill mpill-amb">Dementia</div>
+      <div class="mpill mpill-grn">Stable</div>
+      <div class="mpill mpill-blue">Mobility Aid</div>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:10px;">
+      <button class="dbtn dbtn-ghost" style="font-size:0.62rem;flex:1" onclick="openPatientEdit()">✏️ Edit Patient</button>
+      <button class="dbtn dbtn-blue"  style="font-size:0.62rem;flex:1" onclick="openReport()">📋 Report</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Patient Details</div>
+    <table class="info-table" id="patDetailsTable">
+      <tr><td>Age</td>       <td id="pd-age">84 yrs</td></tr>
+      <tr><td>Gender</td>    <td id="pd-gender">Female</td></tr>
+      <tr><td>Blood</td>     <td id="pd-blood">B+</td></tr>
+      <tr><td>Admitted</td>  <td id="pd-admitted">09 Mar 2026</td></tr>
+      <tr><td>Doctor</td>    <td id="pd-doctor">Dr. Anand Kumar</td></tr>
+      <tr><td>Diet</td>      <td id="pd-diet">Soft / Low Salt</td></tr>
+      <tr><td>Medication</td><td id="pd-medication">09:00, 14:00, 21:00</td></tr>
+      <tr><td>Ward / Bed</td><td id="pd-ward">ICU Ward — Bed 3</td></tr>
+      <tr><td>Tag ID</td>    <td id="pd-tag">NW-017</td></tr>
+      <tr><td>Allergies</td> <td id="pd-allergies">Penicillin</td></tr>
+      <tr><td>Diagnosis</td> <td id="pd-diagnosis">Dementia, Hip fracture</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Live Status</div>
+    <div class="vital-big">
+      <div class="vb-row" id="actRow">
+        <span class="vb-left">🚶 Activity</span>
+        <span class="vb-val ok" id="actVal">—</span>
+      </div>
+      <div class="vb-row">
+        <span class="vb-left">📍 Zone</span>
+        <span class="vb-val" id="zoneVal">—</span>
+      </div>
+      <div class="vb-row" id="presenceRow">
+        <span class="vb-left">👁 Presence</span>
+        <span class="vb-val" id="presenceVal">—</span>
+      </div>
+      <div class="vb-row" id="radarFallRow">
+        <span class="vb-left">🚨 Radar Fall</span>
+        <span class="vb-val ok" id="radarFallVal">Clear</span>
+      </div>
+      <div class="vb-row">
+        <span class="vb-left">⏰ Last Nurse Check</span>
+        <span class="vb-val warn">22 min ago</span>
+      </div>
+      <div class="vb-row">
+        <span class="vb-left">📡 Connection</span>
+        <span class="vb-val" id="connVal">
+          <span class="offline-badge" id="connBadge">OFFLINE</span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- UWB Signal Quality -->
+  <div class="card">
+    <div class="card-label">UWB Signal Quality</div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div class="sig-row">
+        <span style="width:28px;color:var(--blue);font-size:0.7rem;font-weight:700">A1</span>
+        <div class="sig-bar"><div class="sig-fill" id="sigFill1" style="width:0%;background:var(--blue)"></div></div>
+        <span style="width:52px;text-align:right;font-family:'Fira Code',monospace;font-size:0.7rem;color:var(--blue)" id="rssiDisp1">—</span>
+      </div>
+      <div class="sig-row">
+        <span style="width:28px;color:var(--teal);font-size:0.7rem;font-weight:700">A2</span>
+        <div class="sig-bar"><div class="sig-fill" id="sigFill2" style="width:0%;background:var(--teal)"></div></div>
+        <span style="width:52px;text-align:right;font-family:'Fira Code',monospace;font-size:0.7rem;color:var(--teal)" id="rssiDisp2">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Emergency Contact</div>
+    <div style="font-size:0.82rem;font-weight:700">Rajan Krishnan (Son)</div>
+    <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">📞 +91 94470 55321</div>
+    <div style="font-size:0.7rem;color:var(--muted);margin-top:2px">Notified of all alerts</div>
+  </div>
+</div>
+
+<!-- ── CENTER ── -->
+<div class="col" style="padding:0;">
+  <div class="map-card2" style="flex:1;display:flex;flex-direction:column;">
+    <div class="map-topbar">
+      <div>
+        <div class="map-t">Room Map — <span id="mapRoomLabel">ICU-3</span></div>
+        <div style="font-size:0.63rem;color:var(--muted);margin-top:2px">2-Anchor UWB · Heading from IMU</div>
+      </div>
+      <div class="btns">
+        <button class="dbtn dbtn-ghost" id="editRoomBtn" onclick="tog2()">✏️ Edit Room</button>
+        <button class="dbtn dbtn-blue" onclick="openModal2()">⚙️ Anchors</button>
+      </div>
+    </div>
+    <canvas id="c2" width="680" height="340" style="flex:1;width:100%;cursor:crosshair"></canvas>
+
+    <!-- Edit toolbar — visible only in edit mode -->
+    <div class="edit-toolbar2" id="tb2">
+      <!-- Tool groups -->
+      <span style="font-size:0.58rem;color:var(--muted);font-weight:700">DRAW</span>
+      <button class="etb" onclick="st2('rect')"      id="eb-rect">▭ Room</button>
+      <button class="etb" onclick="st2('zone')"      id="eb-zone">⬚ Zone</button>
+
+      <span style="font-size:0.58rem;color:var(--muted);font-weight:700;margin-left:6px">PLACE</span>
+      <button class="etb" onclick="st2('bed')"       id="eb-bed">🛏 Bed</button>
+      <button class="etb" onclick="st2('chair')"     id="eb-chair">🪑 Chair</button>
+      <button class="etb" onclick="st2('door')"      id="eb-door">🚪 Door</button>
+      <button class="etb" onclick="st2('bathroom')"  id="eb-bath">🚿 Bath</button>
+      <button class="etb" onclick="st2('table')"     id="eb-table">🪞 Table</button>
+      <button class="etb" onclick="st2('nurse')"     id="eb-nurse">👩‍⚕️ Nurse</button>
+      <button class="etb" onclick="st2('xhair')"     id="eb-xhair">✛ Marker</button>
+
+      <span style="font-size:0.58rem;color:var(--muted);font-weight:700;margin-left:6px">EDIT</span>
+      <button class="etb" onclick="st2('select')"    id="eb-select">↖ Select</button>
+      <button class="etb" onclick="st2('label')"     id="eb-label">🏷 Label</button>
+      <button class="etb" onclick="st2('erase')"     id="eb-erase" style="margin-left:4px">🗑 Erase</button>
+      <button class="etb" onclick="clearAllShapes()" style="margin-left:4px;color:var(--red)">✕ Clear All</button>
+    </div>
+
+    <!-- Map controls bar — always visible -->
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 16px;border-top:1px solid var(--border);background:var(--s2);">
+      <!-- Anchor lines toggle -->
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.68rem;color:var(--muted);">
+        <div class="tog-wrap" id="togAnchorWrap" onclick="toggleAnchorLines()" title="Show dotted lines from tag to each anchor">
+          <div class="tog-track off" id="togAnchorTrack"><div class="tog-thumb"></div></div>
+        </div>
+        Anchor Lines
+      </label>
+
+      <div style="width:1px;height:18px;background:var(--border)"></div>
+
+      <!-- Smoothing toggle -->
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.68rem;color:var(--muted);">
+        <div class="tog-wrap" id="togSmoothWrap" onclick="toggleSmoothing()" title="Enable/disable EMA position smoothing">
+          <div class="tog-track on" id="togSmoothTrack"><div class="tog-thumb"></div></div>
+        </div>
+        Smoothing
+      </label>
+
+      <!-- Alpha slider — only meaningful when smoothing is on -->
+      <div style="display:flex;align-items:center;gap:6px;" id="alphaSliderWrap">
+        <span style="font-size:0.62rem;color:var(--muted)">Factor</span>
+        <input type="range" min="0.05" max="0.95" step="0.05" value="0.35"
+               id="alphaSlider"
+               style="width:90px;accent-color:var(--blue);cursor:pointer;"
+               oninput="updateAlpha(this.value)">
+        <span style="font-size:0.62rem;font-family:'Fira Code',monospace;color:var(--blue);width:28px" id="alphaVal">0.35</span>
+      </div>
+
+      <div style="width:1px;height:18px;background:var(--border)"></div>
+
+      <!-- Spike filter: max range ceiling -->
+      <div style="display:flex;align-items:center;gap:6px;" title="Hard ceiling — readings above this are discarded as multipath ghosts">
+        <span style="font-size:0.62rem;color:var(--muted)">Max range</span>
+        <input type="range" min="3" max="30" step="1" value="20"
+               id="maxRangeSlider"
+               style="width:70px;accent-color:var(--red);cursor:pointer;"
+               oninput="updateMaxRange(this.value)">
+        <span style="font-size:0.62rem;font-family:'Fira Code',monospace;color:var(--red);width:32px" id="maxRangeVal">20m</span>
+      </div>
+
+      <!-- Spike filter: jump threshold -->
+      <div style="display:flex;align-items:center;gap:6px;" title="Max allowed jump per reading — bigger spikes are silently dropped">
+        <span style="font-size:0.62rem;color:var(--muted)">Jump limit</span>
+        <input type="range" min="0.5" max="8" step="0.5" value="4"
+               id="jumpSlider"
+               style="width:70px;accent-color:var(--amber);cursor:pointer;"
+               oninput="updateJump(this.value)">
+        <span style="font-size:0.62rem;font-family:'Fira Code',monospace;color:var(--amber);width:32px" id="jumpVal">4m</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px;">
+    <!-- UWB Ranges -->
+    <div class="card" style="background:var(--s1)">
+      <div class="card-label">UWB Anchor Ranges</div>
+      <div class="range-card">
+        <div class="rrow"><span class="rname">A1 — Door</span>    <span class="rval" style="color:var(--blue)" id="r2-a1">—</span></div>
+        <div class="rrow"><span class="rname">A2 — Window</span>  <span class="rval" style="color:var(--teal)" id="r2-a2">—</span></div>
+        <div class="rrow"><span class="rname">Position X</span>   <span class="rval" id="r2-px">—</span></div>
+        <div class="rrow"><span class="rname">Position Y</span>   <span class="rval" id="r2-py">—</span></div>
+      </div>
+    </div>
+
+    <!-- IMU + Compass -->
+    <div class="card" style="background:var(--s1)">
+      <div class="card-label">IMU — ISM330DHCX</div>
+
+      <!-- Roll / Pitch / Yaw -->
+      <div class="orient-row">
+        <div class="or-box"><div class="or-l">ROLL</div><div class="or-v" id="rollDisp" style="color:var(--green)">—°</div></div>
+        <div class="or-box"><div class="or-l">PITCH</div><div class="or-v" id="pitchDisp" style="color:var(--amber)">—°</div></div>
+        <div class="or-box"><div class="or-l">YAW</div><div class="or-v" id="yawDisp" style="color:var(--blue)">—°</div></div>
+      </div>
+
+      <!-- Accel raw (shown as subtle second row) -->
+      <div class="imu-grid2" style="margin-bottom:8px">
+        <div class="ig2"><div class="ig2-l">AX mg</div><div class="ig2-v" id="i2x">—</div></div>
+        <div class="ig2"><div class="ig2-l">AY mg</div><div class="ig2-v" id="i2y">—</div></div>
+        <div class="ig2"><div class="ig2-l">AZ mg</div><div class="ig2-v" id="i2z">—</div></div>
+      </div>
+
+      <!-- Heading compass -->
+      <div class="heading-card">
+        <div class="compass2">
+          <div class="cring">
+            <div class="cneedle cnorth" style="transform:rotate(0deg)"></div>
+            <div class="cneedle" id="nd2" style="background:var(--red);transform:rotate(0deg)"></div>
+          </div>
+        </div>
+        <div style="flex:1">
+          <div class="h-val" id="hv2">—°</div>
+          <div class="h-dir" id="hd2">—</div>
+          <div style="margin-top:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <button class="dbtn dbtn-blue" style="font-size:0.6rem;padding:4px 10px;" onclick="calibrateIMU()" title="Point device towards North, then press Calibrate">
+              🧭 Calibrate North
+            </button>
+            <span style="font-size:0.58rem;color:var(--muted)" id="calibStatus">Not calibrated</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── RIGHT ── -->
+<div class="col">
+  <!-- Anchor config -->
+  <div class="anchor-section">
+    <div class="as-header">
+      <div class="as-title">⚙️ Anchor Config</div>
+      <button class="dbtn dbtn-ghost" style="font-size:0.62rem;padding:4px 9px" onclick="togAF2()">Edit</button>
+    </div>
+    <div id="adisplay2">
+      <div class="rrow"><span class="rname" style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:var(--blue);display:inline-block"></span>A1 Door</span><span style="font-size:0.68rem;color:var(--blue);font-family:'Fira Code',monospace" id="a1dispCoord">0, 0</span></div>
+      <div class="rrow" style="border:none"><span class="rname" style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block"></span>A2 Window</span><span style="font-size:0.68rem;color:var(--teal);font-family:'Fira Code',monospace" id="a2dispCoord">5, 4</span></div>
+    </div>
+    <div class="anchor-form2" id="af2">
+      <div class="row2">
+        <div class="fg"><label class="fl">A1 Name</label><input class="fi" id="a1name" value="Door"></div>
+        <div class="fg"><label class="fl">A1 X, Y (m)</label><input class="fi" id="a1coord" value="0, 0"></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label class="fl">A2 Name</label><input class="fi" id="a2name" value="Window"></div>
+        <div class="fg"><label class="fl">A2 X, Y (m)</label><input class="fi" id="a2coord" value="5, 4"></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label class="fl">Room W (m)</label><input class="fi" id="rW" value="6"></div>
+        <div class="fg"><label class="fl">Room H (m)</label><input class="fi" id="rH" value="5"></div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="dbtn dbtn-blue" style="flex:1" onclick="saveAnchors()">✓ Save</button>
+        <button class="dbtn dbtn-ghost" onclick="togAF2()">✗</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- mmWave Radar Panel -->
+  <div class="card">
+    <div class="card-label" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>mmWave Radar — SEN0623</span>
+      <span class="offline-badge" id="mmwConnBadge">OFFLINE</span>
+    </div>
+
+    <!-- Mode switch buttons -->
+    <div class="mmw-mode-bar">
+      <button class="mmw-btn mmw-btn-fall active" id="mmwBtnFall" onclick="setRadarMode('MODE_FALL')">
+        🛡 Fall Detection
+      </button>
+      <button class="mmw-btn mmw-btn-sleep" id="mmwBtnSleep" onclick="setRadarMode('MODE_SLEEP')">
+        🌙 Sleep Monitor
+      </button>
+    </div>
+
+    <!-- Status bar -->
+    <div class="mmw-status-bar live" id="mmwStatusBar">
+      <span class="mmw-icon" id="mmwStatusIcon">📡</span>
+      <div class="mmw-txt">
+        <b id="mmwStatusTitle">Waiting for radar…</b>
+        <small id="mmwStatusSub">No data received</small>
+      </div>
+    </div>
+
+    <!-- Vitals grid — shown in FALL mode -->
+    <div id="mmwFallPanel">
+      <div class="mmw-grid">
+        <div class="mmw-tile" id="mmwPresenceTile">
+          <div class="mmw-tile-l">Presence</div>
+          <div class="mmw-tile-v" id="mmwPresence" style="color:var(--teal)">—</div>
+        </div>
+        <div class="mmw-tile" id="mmwFallTile">
+          <div class="mmw-tile-l">Fall State</div>
+          <div class="mmw-tile-v" id="mmwFallState" style="color:var(--green)">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vitals grid — shown in SLEEP mode -->
+    <div id="mmwSleepPanel" style="display:none">
+      <div class="mmw-grid">
+        <div class="mmw-tile" id="mmwHeartTile">
+          <div class="mmw-tile-l">Heart Rate</div>
+          <div class="mmw-tile-v" id="mmwHeart" style="color:var(--red)">—</div>
+          <div class="sleep-bar stopped" id="hrBars">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+        <div class="mmw-tile" id="mmwRespTile">
+          <div class="mmw-tile-l">Respiration</div>
+          <div class="mmw-tile-v" id="mmwResp" style="color:var(--teal)">—</div>
+          <div class="sleep-bar stopped" id="respBars">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+      </div>
+      <div class="mmw-grid">
+        <div class="mmw-tile" id="mmwSleepPresenceTile">
+          <div class="mmw-tile-l">Presence</div>
+          <div class="mmw-tile-v" id="mmwSleepPresence" style="color:var(--teal)">—</div>
+        </div>
+        <div class="mmw-tile" id="mmwSleepStateTile">
+          <div class="mmw-tile-l">Sleep State</div>
+          <div class="mmw-tile-v" id="mmwSleepState" style="color:var(--blue)">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nurse -->
+  <div class="card">
+    <div class="card-label">On-Duty Nurse</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:38px;height:38px;border-radius:50%;background:var(--blue-d);border:2px solid var(--blue);display:flex;align-items:center;justify-content:center;font-size:1rem">👩‍⚕️</div>
+      <div>
+        <div style="font-size:0.82rem;font-weight:700">Nurse Divya R.</div>
+        <div style="font-size:0.65rem;color:var(--green)">● Night Shift Active</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Event log -->
+  <div class="card" style="flex:1">
+    <div class="card-label" style="display:flex;justify-content:space-between;align-items:center">
+      <span>Event Log</span>
+      <span class="live-badge" id="logBadge" style="display:none">LIVE</span>
+    </div>
+    <div class="feed2" id="feed2">
+      <div class="f2item"><div class="f2dot" style="background:var(--muted)"></div><div><div class="f2text">Waiting for device…</div><div class="f2time">—</div></div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Anchor config modal -->
+<div id="modal2" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;align-items:center;justify-content:center;">
+  <div style="background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:28px;width:360px;box-shadow:var(--shadow);">
+    <div style="font-size:1rem;font-weight:800;margin-bottom:4px">⚙️ Anchor Placement Config</div>
+    <div style="font-size:0.7rem;color:var(--muted);margin-bottom:18px">Set physical UWB anchor coordinates</div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="row2">
+        <div class="fg"><label class="fl">A1 Label</label><input class="fi" id="m-a1name" value="Door Side"></div>
+        <div class="fg"><label class="fl">A1 X, Y</label><input class="fi" id="m-a1coord" value="0, 0"></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label class="fl">A2 Label</label><input class="fi" id="m-a2name" value="Window Side"></div>
+        <div class="fg"><label class="fl">A2 X, Y</label><input class="fi" id="m-a2coord" value="5, 4"></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label class="fl">Room Width (m)</label><input class="fi" id="m-rW" value="6"></div>
+        <div class="fg"><label class="fl">Room Height (m)</label><input class="fi" id="m-rH" value="5"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">
+      <button class="dbtn dbtn-ghost" onclick="closeModal2()">Cancel</button>
+      <button class="dbtn dbtn-blue" onclick="applyModal()">✓ Apply</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  Clock
+// ═══════════════════════════════════════════════
+setInterval(()=>{ document.getElementById('clk2').textContent = new Date().toLocaleTimeString('en-GB'); }, 1000);
+
+// ═══════════════════════════════════════════════
+//  Room / Anchor Config
+// ═══════════════════════════════════════════════
+let roomW = 6, roomH = 5;
+let A1 = {x:0, y:0, name:'Door'};
+let A2 = {x:5, y:4, name:'Window'};
+
+function parseCoord(str){ const p=str.split(','); return {x:parseFloat(p[0])||0, y:parseFloat(p[1])||0}; }
+
+function saveAnchors(){
+  const c1 = parseCoord(document.getElementById('a1coord').value);
+  const c2 = parseCoord(document.getElementById('a2coord').value);
+  A1 = {...c1, name: document.getElementById('a1name').value};
+  A2 = {...c2, name: document.getElementById('a2name').value};
+  roomW = parseFloat(document.getElementById('rW').value)||6;
+  roomH = parseFloat(document.getElementById('rH').value)||5;
+  document.getElementById('a1dispCoord').textContent = `${A1.x}, ${A1.y}`;
+  document.getElementById('a2dispCoord').textContent = `${A2.x}, ${A2.y}`;
+  togAF2();
+}
+function applyModal(){
+  const c1 = parseCoord(document.getElementById('m-a1coord').value);
+  const c2 = parseCoord(document.getElementById('m-a2coord').value);
+  A1 = {...c1, name: document.getElementById('m-a1name').value};
+  A2 = {...c2, name: document.getElementById('m-a2name').value};
+  roomW = parseFloat(document.getElementById('m-rW').value)||6;
+  roomH = parseFloat(document.getElementById('m-rH').value)||5;
+  closeModal2();
+}
+
+// ═══════════════════════════════════════════════
+//  Sensor state
+// ═══════════════════════════════════════════════
+let d1=0, d2=0, rssi1=-100, rssi2=-100;
+let roll=0, pitch=0, yaw=0;
+let smoothX=0.5, smoothY=0.5;
+let rawX=0.5, rawY=0.5;          // unsmoothed trilateration result
+let ALPHA = 0.35;                  // mutable — controlled by slider
+let smoothingOn = true;            // toggle
+let anchorLinesOn = false;         // dotted lines tag→anchors toggle
+let calibYawOffset = 0;            // IMU north calibration offset (degrees)
+let isLive = false;
+let lastPacket = 0;
+
+// ── Dashboard-side spike filter ─────────────────
+// Protects against any ghost readings that slip through firmware
+const DASH_MAX_RANGE = 20;     // hard ceiling in metres — anything above is junk
+const DASH_JUMP = 4;           // max single-step jump allowed (metres)
+const DASH_BUF  = 5;           // median window size
+let prevD1 = 0, prevD2 = 0;
+const medBuf1 = [], medBuf2 = [];
+
+function dashMedian(buf) {
+  const s = [...buf].sort((a,b)=>a-b);
+  return s[Math.floor(s.length/2)];
+}
+
+// Returns filtered value or null if reading should be rejected
+function filterRange(raw, prev, buf) {
+  const maxR = window._dashMaxRange ?? DASH_MAX_RANGE;
+  const jump  = window._dashJump    ?? DASH_JUMP;
+  if (raw <= 0 || raw > maxR) return null;           // hard reject
+  if (prev > 0 && Math.abs(raw - prev) > jump) return null; // jump guard
+  buf.push(raw);
+  if (buf.length > DASH_BUF) buf.shift();
+  return dashMedian(buf);
+}
+// ────────────────────────────────────────────────
+
+// ═══════════════════════════════════════════════
+//  Socket.IO
+// ═══════════════════════════════════════════════
+const socket = io();
+
+socket.on('connect', ()=>{
+  setLive(true);
+  addEvent('Device connected', 'green');
+});
+
+socket.on('disconnect', ()=>{
+  setLive(false);
+  addEvent('Device disconnected', 'red');
+});
+
+socket.on('sensor_data', msg => {
+  // ── Spike-filter UWB distances before use ──
+  const f1 = filterRange(msg.A1, prevD1, medBuf1);
+  const f2 = filterRange(msg.A2, prevD2, medBuf2);
+  if (f1 !== null) { d1 = f1; prevD1 = f1; }
+  if (f2 !== null) { d2 = f2; prevD2 = f2; }
+  // ────────────────────────────────────────────
+  rssi1 = msg.rssi1 ?? rssi1;
+  rssi2 = msg.rssi2 ?? rssi2;
+  roll  = msg.roll  ?? roll;
+  pitch = msg.pitch ?? pitch;
+  yaw   = msg.yaw   ?? yaw;
+  lastPacket = Date.now();
+  updateUI();
+});
+
+// Offline watchdog
+setInterval(()=>{
+  if(isLive && Date.now() - lastPacket > 3000){
+    setLive(false);
+    addEvent('Signal lost — no data', 'red');
+  }
+},1000);
+
+function setLive(v){
+  isLive = v;
+  const dot = document.getElementById('onlineDot');
+  const badge = document.getElementById('connBadge');
+  const chip = document.getElementById('connChip');
+  const logBadge = document.getElementById('logBadge');
+  if(v){
+    dot.style.background = 'var(--green)';
+    badge.className = 'live-badge'; badge.textContent = 'LIVE';
+    chip.className = 'chip2 chip-live'; chip.textContent = 'DEVICE ONLINE';
+    logBadge.style.display = 'inline-flex';
+  } else {
+    dot.style.background = 'var(--red)';
+    badge.className = 'offline-badge'; badge.textContent = 'OFFLINE';
+    chip.className = 'chip2 chip-off'; chip.textContent = 'OFFLINE';
+    logBadge.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  UI Update
+// ═══════════════════════════════════════════════
+const DIRS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+function heading2dir(h){ return DIRS[Math.round(((h%360)+360)%360/22.5)%16]; }
+function rssiPct(r){ return Math.max(0,Math.min(100,(r+90)*2)); }
+function sgn(v){ return v>=0?'+':'-'; }
+// Calibrated yaw: subtract offset, wrap to 0–360
+function calibratedYaw(){ return ((yaw - calibYawOffset) % 360 + 360) % 360; }
+
+// Trilateration (2-anchor)
+function trilaterate(){
+  if(d1<=0||d2<=0) return;
+  const L = Math.hypot(A2.x-A1.x, A2.y-A1.y);
+  if(L===0) return;
+  const x = (d1*d1 - d2*d2 + L*L)/(2*L);
+  const ySq = d1*d1 - x*x;
+  const y = Math.sqrt(Math.max(0,ySq));
+  // Rotate solution to align A1→A2 axis
+  const ang = Math.atan2(A2.y-A1.y, A2.x-A1.x);
+  let rx = A1.x + x*Math.cos(ang) - y*Math.sin(ang);
+  let ry = A1.y + x*Math.sin(ang) + y*Math.cos(ang);
+  // Clamp to room bounds — prevents negative / out-of-bounds positions
+  rx = Math.max(0, Math.min(roomW, rx));
+  ry = Math.max(0, Math.min(roomH, ry));
+  rawX = rx; rawY = ry;
+  if(smoothingOn){
+    smoothX = ALPHA*rx + (1-ALPHA)*smoothX;
+    smoothY = ALPHA*ry + (1-ALPHA)*smoothY;
+  } else {
+    smoothX = rx; smoothY = ry;
+  }
+}
+
+// Zone detection
+function getZone(px,py){
+  const nx = px/roomW, ny = py/roomH;
+  if(nx<0.15||nx>0.85||ny<0.1||ny>0.9) return {text:'⚠ Boundary',cls:'alert',alert:true};
+  if(nx<0.4&&ny<0.4) return {text:'Bed Area',cls:'ok',alert:false};
+  if(nx>0.6&&ny>0.6) return {text:'Far Corner',cls:'warn',alert:false};
+  return {text:'Mid Room',cls:'ok',alert:false};
+}
+
+// Activity from pitch/roll magnitude
+function getActivity(){
+  const mag = Math.sqrt(roll*roll + pitch*pitch);
+  if(mag>25) return {text:'High Motion',cls:'alert'};
+  if(mag>8)  return {text:'Moving',cls:'ok'};
+  return      {text:'Still',cls:'warn'};
+}
+
+let prevZoneAlert = false;
+function updateUI(){
+  trilaterate();
+
+  // RSSI bars
+  document.getElementById('sigFill1').style.width = rssiPct(rssi1)+'%';
+  document.getElementById('sigFill2').style.width = rssiPct(rssi2)+'%';
+  document.getElementById('rssiDisp1').textContent = rssi1.toFixed(1)+' dBm';
+  document.getElementById('rssiDisp2').textContent = rssi2.toFixed(1)+' dBm';
+
+  // UWB ranges
+  document.getElementById('r2-a1').textContent = d1>0 ? d1.toFixed(2)+'m' : '—';
+  document.getElementById('r2-a2').textContent = d2>0 ? d2.toFixed(2)+'m' : '—';
+  document.getElementById('r2-px').textContent = smoothX.toFixed(2)+'m';
+  document.getElementById('r2-py').textContent = smoothY.toFixed(2)+'m';
+
+  // IMU orientation
+  document.getElementById('rollDisp').textContent  = roll.toFixed(1)+'°';
+  document.getElementById('pitchDisp').textContent = pitch.toFixed(1)+'°';
+  // yawDisp updated in heading block below
+
+  // Heading compass — use calibrated yaw
+  const cyaw = calibratedYaw();
+  document.getElementById('hv2').textContent = Math.round(cyaw)+'°';
+  document.getElementById('hd2').textContent = heading2dir(cyaw);
+  document.getElementById('nd2').style.transform = `rotate(${cyaw}deg)`;
+  document.getElementById('yawDisp').textContent = cyaw.toFixed(1)+'°';
+
+  // Accel derived from roll/pitch (approx mg values)
+  const ax = -Math.sin(pitch*Math.PI/180)*1000;
+  const ay =  Math.sin(roll*Math.PI/180)*Math.cos(pitch*Math.PI/180)*1000;
+  const az =  Math.cos(roll*Math.PI/180)*Math.cos(pitch*Math.PI/180)*1000;
+  document.getElementById('i2x').textContent = (ax>=0?'+':'')+ax.toFixed(0);
+  document.getElementById('i2y').textContent = (ay>=0?'+':'')+ay.toFixed(0);
+  document.getElementById('i2z').textContent = (az>=0?'+':'')+az.toFixed(0);
+
+  // Zone & activity
+  const zone = getZone(smoothX, smoothY);
+  const act  = getActivity();
+  document.getElementById('zoneVal').textContent = zone.text;
+  document.getElementById('zoneVal').className   = 'vb-val '+zone.cls;
+  document.getElementById('actVal').textContent  = act.text;
+  document.getElementById('actVal').className    = 'vb-val '+act.cls;
+
+  // Fall / boundary alert
+  if(zone.alert && !prevZoneAlert){
+    document.getElementById('fallAlert').style.display = 'block';
+    addEvent('⚠ Patient near boundary!', 'red');
+    prevZoneAlert = true;
+  } else if(!zone.alert){
+    document.getElementById('fallAlert').style.display = 'none';
+    prevZoneAlert = false;
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  Event Log
+// ═══════════════════════════════════════════════
+const COLOR_MAP = {green:'var(--green)',red:'var(--red)',amber:'var(--amber)',blue:'var(--blue)',muted:'var(--muted)'};
+let eventCount = 0;
+
+function addEvent(text, color='green'){
+  const feed = document.getElementById('feed2');
+  const now  = new Date().toLocaleTimeString('en-GB');
+  const item = document.createElement('div');
+  item.className = 'f2item';
+  item.style.animation = 'feedIn .3s ease';
+  item.innerHTML = `<div class="f2dot" style="background:${COLOR_MAP[color]||'var(--green)'}"></div>
+    <div><div class="f2text">${text}</div><div class="f2time">${now}</div></div>`;
+  feed.insertBefore(item, feed.firstChild);
+  // Keep max 30 entries
+  while(feed.children.length > 30) feed.removeChild(feed.lastChild);
+  eventCount++;
+}
+
+// Periodic motion alerts
+let lastMotionAlert=0;
+setInterval(()=>{
+  if(!isLive) return;
+  const mag = Math.sqrt(roll*roll+pitch*pitch);
+  if(mag>25 && Date.now()-lastMotionAlert>10000){
+    addEvent('High movement detected', 'amber');
+    lastMotionAlert = Date.now();
+  }
+},2000);
+
+// ═══════════════════════════════════════════════
+//  mmWave Radar State + Socket Handler
+// ═══════════════════════════════════════════════
+let mmwMode       = 'FALL';   // current radar mode
+let mmwLive       = false;    // has data arrived?
+let mmwSwitching  = false;    // mid mode-switch?
+let mmwTargetMode = '';
+let lastMmwPacket = 0;
+let prevFallState = 0;        // for edge detection on fall
+
+// Decode presence integer → label
+function presenceLabel(v){
+  if(v===1) return {txt:'Present',    cls:'ok'};
+  if(v===0) return {txt:'No Person',  cls:'warn'};
+  return           {txt:'—',          cls:''};
+}
+// Decode fall_state → label
+function fallLabel(v){
+  if(v===1) return {txt:'⚠ FALL!',    cls:'alert'};
+  if(v===0) return {txt:'No Fall',    cls:'ok'};
+  return           {txt:'—',          cls:''};
+}
+// Decode sleep_state → label
+function sleepLabel(v){
+  const s=['—','Awake','Light','Deep','REM'];
+  return s[v] ?? '—';
+}
+
+socket.on('mmwave_data', msg => {
+  lastMmwPacket = Date.now();
+  if(!mmwLive){ mmwLive=true; setMmwLive(true); }
+
+  const mode = msg.mode ?? mmwMode;
+  mmwMode = mode;
+
+  if(mode === 'FALL'){
+    const pres = msg.presence ?? 0;
+    const fall = msg.fall_state ?? 0;
+
+    // Presence tile
+    const pl = presenceLabel(pres);
+    const pt = document.getElementById('mmwPresenceTile');
+    const pv = document.getElementById('mmwPresence');
+    pv.textContent = pl.txt;
+    pv.style.color = pl.cls==='ok'?'var(--teal)':pl.cls==='warn'?'var(--amber)':'var(--muted)';
+    pt.className   = 'mmw-tile' + (pres===1?' lit':'');
+
+    // Fall tile
+    const fl = fallLabel(fall);
+    const ft = document.getElementById('mmwFallTile');
+    const fv = document.getElementById('mmwFallState');
+    fv.textContent = fl.txt;
+    fv.style.color = fall===1?'var(--red)':'var(--green)';
+    ft.className   = 'mmw-tile' + (fall===1?' alert':'');
+
+    // Fall edge detection → alert banner + event log
+    if(fall===1 && prevFallState!==1){
+      document.getElementById('mmwFallAlert').style.display='block';
+      document.getElementById('mmwStatusBar').className='mmw-status-bar radarfall';
+      document.getElementById('mmwStatusIcon').textContent='🚨';
+      document.getElementById('mmwStatusTitle').textContent='FALL DETECTED';
+      document.getElementById('mmwStatusSub').textContent='Immediate attention required!';
+      addEvent('🚨 mmWave: Fall detected!', 'red');
+      // also update left column
+      document.getElementById('radarFallVal').textContent='⚠ FALL!';
+      document.getElementById('radarFallVal').className='vb-val alert';
+    } else if(fall===0 && prevFallState===1){
+      document.getElementById('mmwFallAlert').style.display='none';
+      setMmwStatusLive(mode, pres);
+      document.getElementById('radarFallVal').textContent='Clear';
+      document.getElementById('radarFallVal').className='vb-val ok';
+      addEvent('mmWave: Fall cleared', 'green');
+    } else if(fall===0){
+      setMmwStatusLive(mode, pres);
+    }
+    prevFallState = fall;
+
+    // Left column presence
+    document.getElementById('presenceVal').textContent = pres===1?'Present':'No Person';
+    document.getElementById('presenceVal').className   = 'vb-val '+(pres===1?'ok':'warn');
+
+    // If we were switching and got a FALL mode packet — stabilizing done
+    if(mmwSwitching && mmwTargetMode==='FALL'){
+      mmwSwitching=false;
+      setMmwStatusLive('FALL', pres);
+    }
+  }
+
+  if(mode === 'SLEEP'){
+    const pres  = msg.presence    ?? 0;
+    const heart = msg.heart        ?? 0;
+    const resp  = msg.respiration  ?? 0;
+    const sstate= msg.sleep_state  ?? 0;
+
+    document.getElementById('mmwHeart').textContent       = heart>0 ? heart+' bpm':'—';
+    document.getElementById('mmwResp').textContent        = resp>0  ? resp+'/min' :'—';
+    document.getElementById('mmwSleepPresence').textContent= presenceLabel(pres).txt;
+    document.getElementById('mmwSleepState').textContent  = sleepLabel(sstate);
+
+    // Animate bars when data is active
+    const hrB   = document.getElementById('hrBars');
+    const respB = document.getElementById('respBars');
+    hrB.className   = 'sleep-bar' + (heart>0?'':' stopped');
+    respB.className = 'sleep-bar' + (resp>0 ?'':' stopped');
+
+    // Tile highlights
+    document.getElementById('mmwHeartTile').className  = 'mmw-tile'+(heart>0?' lit':'');
+    document.getElementById('mmwRespTile').className   = 'mmw-tile'+(resp>0?' lit':'');
+    document.getElementById('mmwSleepPresenceTile').className = 'mmw-tile'+(pres===1?' lit':'');
+
+    // Left column presence
+    document.getElementById('presenceVal').textContent = pres===1?'Present':'No Person';
+    document.getElementById('presenceVal').className   = 'vb-val '+(pres===1?'ok':'warn');
+
+    if(mmwSwitching && mmwTargetMode==='SLEEP'){
+      if(heart>0||resp>0){ mmwSwitching=false; setMmwStatusLive('SLEEP', pres); }
+    } else {
+      setMmwStatusLive('SLEEP', pres);
+    }
+  }
+});
+
+// mmWave offline watchdog
+setInterval(()=>{
+  if(mmwLive && Date.now()-lastMmwPacket>5000){
+    mmwLive=false; setMmwLive(false);
+    addEvent('mmWave radar offline', 'amber');
+  }
+},2000);
+
+function setMmwLive(v){
+  const badge = document.getElementById('mmwConnBadge');
+  const chip  = document.getElementById('mmwChip');
+  if(v){
+    badge.className='live-badge'; badge.textContent='LIVE';
+    chip.className='chip2 chip-live'; chip.textContent='mmWave LIVE';
+  } else {
+    badge.className='offline-badge'; badge.textContent='OFFLINE';
+    chip.className='chip2 chip-off'; chip.textContent='mmWave OFFLINE';
+  }
+}
+
+function setMmwStatusLive(mode, pres){
+  const bar   = document.getElementById('mmwStatusBar');
+  const icon  = document.getElementById('mmwStatusIcon');
+  const title = document.getElementById('mmwStatusTitle');
+  const sub   = document.getElementById('mmwStatusSub');
+  bar.className='mmw-status-bar live';
+  if(mode==='FALL'){
+    icon.textContent='🛡';
+    title.textContent='Fall Detection Active';
+    sub.textContent  = pres===1?'Person detected in room':'Room appears empty';
+  } else {
+    icon.textContent='🌙';
+    title.textContent='Sleep Monitoring Active';
+    sub.textContent  ='Tracking respiration & heart rate';
+  }
+}
+
+function setRadarMode(mode){
+  mmwSwitching=true; mmwTargetMode=mode.replace('MODE_','');
+  const bar   = document.getElementById('mmwStatusBar');
+  const icon  = document.getElementById('mmwStatusIcon');
+  const title = document.getElementById('mmwStatusTitle');
+  const sub   = document.getElementById('mmwStatusSub');
+
+  // Update active button styling
+  document.getElementById('mmwBtnFall').classList.toggle('active', mode==='MODE_FALL');
+  document.getElementById('mmwBtnSleep').classList.toggle('active', mode==='MODE_SLEEP');
+
+  // Show/hide panels
+  document.getElementById('mmwFallPanel').style.display  = mode==='MODE_FALL'?'block':'none';
+  document.getElementById('mmwSleepPanel').style.display = mode==='MODE_SLEEP'?'block':'none';
+
+  bar.className='mmw-status-bar switching';
+  icon.textContent='⏳';
+  title.textContent='Switching to '+mmwTargetMode+' Mode…';
+  sub.textContent  ='Radar reconfiguring, please wait';
+
+  addEvent('Radar mode → '+mmwTargetMode, 'blue');
+
+  // Send command to ESP32 via server
+  fetch('/set_mode?mode='+mode)
+    .then(()=>{
+      // After 2s assume still stabilizing (firmware takes ~2s to switch)
+      setTimeout(()=>{
+        if(mmwSwitching){
+          bar.className='mmw-status-bar stabilizing';
+          icon.textContent='🔄';
+          title.textContent='Stabilizing Algorithm…';
+          sub.textContent  ='Waiting for valid readings';
+        }
+      }, 2000);
+    })
+    .catch(()=>addEvent('Mode command failed', 'red'));
+}
+
+
+// ═══════════════════════════════════════════════
+//  Canvas 2D Map
+// ═══════════════════════════════════════════════
+const c2  = document.getElementById('c2');
+const ctx = c2.getContext('2d');
+let em2=false, ct2='bed', objs2=[];
+const ICONS2={bed:'🛏',chair:'🪑',door:'🚪',bathroom:'🚿',table:'🪞',xhair:'✛'};
+
+// Default room objects
+objs2=[{type:'bed',x:110,y:100},{type:'chair',x:190,y:180},{type:'bathroom',x:620,y:75}];
+
+function st2(t){
+  ct2=t;
+  document.querySelectorAll('.etb').forEach(b=>b.classList.remove('sel'));
+  const el=document.getElementById('eb-'+t); if(el)el.classList.add('sel');
+}
+function tog2(){
+  em2=!em2;
+  document.getElementById('tb2').classList.toggle('on',em2);
+  document.querySelector('.dbtn-ghost').textContent = em2?'✓ Done':'✏️ Edit Room';
+}
+c2.addEventListener('click',e=>{
+  if(!em2) return;
+  const r=c2.getBoundingClientRect();
+  const sx=c2.width/r.width, sy=c2.height/r.height;
+  const cx=(e.clientX-r.left)*sx, cy=(e.clientY-r.top)*sy;
+  if(ct2==='erase'){ objs2=objs2.filter(o=>Math.hypot(o.x-cx,o.y-cy)>30); }
+  else { objs2.push({type:ct2,x:cx,y:cy}); }
+});
+
+function draw2(){
+  const W=c2.width, H=c2.height, pad=32;
+  ctx.clearRect(0,0,W,H);
+
+  // Background
+  ctx.fillStyle='#1c2333'; ctx.fillRect(0,0,W,H);
+
+  // Grid
+  ctx.strokeStyle='rgba(79,136,255,0.06)'; ctx.lineWidth=1;
+  for(let gx=pad;gx<W;gx+=36){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,H);ctx.stroke();}
+  for(let gy=pad;gy<H;gy+=36){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.stroke();}
+
+  // Room boundary
+  ctx.strokeStyle='#4f88ff'; ctx.lineWidth=2;
+  ctx.strokeRect(pad,pad,W-pad*2,H-pad*2);
+  ctx.fillStyle='rgba(79,136,255,0.03)'; ctx.fillRect(pad,pad,W-pad*2,H-pad*2);
+
+  // Edit mode overlay
+  if(em2){
+    ctx.fillStyle='rgba(79,136,255,0.06)'; ctx.fillRect(pad,pad,W-pad*2,H-pad*2);
+    ctx.font='bold 10px Plus Jakarta Sans'; ctx.fillStyle='rgba(79,136,255,0.6)';
+    ctx.textAlign='center'; ctx.fillText('EDIT MODE — Click to place',W/2,16);
+  }
+
+  // Room objects
+  objs2.forEach(o=>{
+    ctx.font='18px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    if(o.type==='xhair'){
+      ctx.strokeStyle='#00c8aa';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(o.x-10,o.y);ctx.lineTo(o.x+10,o.y);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(o.x,o.y-10);ctx.lineTo(o.x,o.y+10);ctx.stroke();
+    } else { ctx.fillText(ICONS2[o.type]||'📌',o.x,o.y); }
+  });
+
+  // Scale: map real coords → canvas coords
+  const rW=W-pad*2, rH=H-pad*2;
+  function toCanvas(rx,ry){
+    return { cx: pad + (rx/roomW)*rW, cy: pad + (1 - ry/roomH)*rH };
+  }
+
+  // Anchors
+  const anc1c = toCanvas(A1.x, A1.y);
+  const anc2c = toCanvas(A2.x, A2.y);
+
+  [[anc1c,'#4f88ff',A1.name],[anc2c,'#00c8aa',A2.name]].forEach(([a,c,n])=>{
+    // Range circle
+    const rangeD = n===A1.name ? d1 : d2;
+    if(rangeD>0){
+      ctx.strokeStyle=c+'25'; ctx.lineWidth=1; ctx.setLineDash([3,6]);
+      ctx.beginPath(); ctx.arc(a.cx,a.cy, rangeD*(rW/roomW), 0,2*Math.PI); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.fillStyle=c+'40'; ctx.beginPath(); ctx.arc(a.cx,a.cy,7,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle=c; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(a.cx,a.cy,7,0,Math.PI*2); ctx.stroke();
+    ctx.font='bold 9px Plus Jakarta Sans'; ctx.fillStyle=c;
+    ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+    ctx.fillText(n,a.cx,a.cy-11);
+  });
+
+  // Person — position from real UWB trilateration
+  const tagC = isLive
+    ? toCanvas(smoothX, smoothY)
+    : toCanvas(roomW*0.5, roomH*0.5);
+
+  // Heading arrow from calibrated IMU yaw
+  // 0° = up (North on canvas = top), clockwise positive
+  const cyaw = calibratedYaw();
+  const headRad = (cyaw - 90) * Math.PI/180;
+  const arrLen = 28;
+  const ax3 = tagC.cx + Math.cos(headRad)*arrLen;
+  const ay3 = tagC.cy + Math.sin(headRad)*arrLen;
+  ctx.strokeStyle='#f5a623'; ctx.lineWidth=2.5; ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(tagC.cx,tagC.cy); ctx.lineTo(ax3,ay3); ctx.stroke();
+  // Arrowhead
+  const ang = Math.atan2(ay3-tagC.cy, ax3-tagC.cx);
+  ctx.fillStyle='#f5a623'; ctx.beginPath();
+  ctx.moveTo(ax3+Math.cos(ang)*6, ay3+Math.sin(ang)*6);
+  ctx.lineTo(ax3+Math.cos(ang+2.4)*5, ay3+Math.sin(ang+2.4)*5);
+  ctx.lineTo(ax3+Math.cos(ang-2.4)*5, ay3+Math.sin(ang-2.4)*5);
+  ctx.closePath(); ctx.fill();
+
+  // Optional dotted lines: tag → each anchor
+  if(anchorLinesOn && (d1>0 || d2>0)){
+    [[anc1c,'#4f88ff',d1],[anc2c,'#00c8aa',d2]].forEach(([a,c,dist])=>{
+      if(dist<=0) return;
+      ctx.save();
+      ctx.strokeStyle=c; ctx.lineWidth=1.2; ctx.setLineDash([4,6]);
+      ctx.globalAlpha=0.5;
+      ctx.beginPath(); ctx.moveTo(tagC.cx,tagC.cy); ctx.lineTo(a.cx,a.cy); ctx.stroke();
+      // Distance label at midpoint
+      const mx=(tagC.cx+a.cx)/2, my=(tagC.cy+a.cy)/2;
+      ctx.globalAlpha=0.85; ctx.setLineDash([]);
+      ctx.font='bold 9px Plus Jakarta Sans'; ctx.fillStyle=c;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(dist.toFixed(2)+'m', mx, my-7);
+      ctx.restore();
+    });
+  }
+  ctx.fillStyle='rgba(245,166,35,0.1)'; ctx.fill();
+  ctx.strokeStyle='rgba(245,166,35,0.5)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(tagC.cx,tagC.cy,16,0,Math.PI*2); ctx.stroke();
+
+  // Tag dot
+  ctx.fillStyle=isLive?'#f5a623':'#666';
+  ctx.beginPath(); ctx.arc(tagC.cx,tagC.cy,8,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#0e1117'; ctx.font='bold 8px Plus Jakarta Sans';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('LK',tagC.cx,tagC.cy);
+
+  // Legend
+  ctx.font='10px Plus Jakarta Sans'; ctx.fillStyle='rgba(100,120,170,0.8)';
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  ctx.fillText('⬤ Leela Krishnan   ◆ Anchors'+'   ↑ Heading',pad+2,H-7);
+
+  // Status overlay if offline
+  if(!isLive){
+    ctx.fillStyle='rgba(14,17,23,0.5)'; ctx.fillRect(pad,pad,rW,rH);
+    ctx.font='bold 12px Plus Jakarta Sans'; ctx.fillStyle='rgba(90,106,133,0.8)';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('Waiting for device…',W/2,H/2);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  Map Controls
+// ═══════════════════════════════════════════════
+function toggleAnchorLines(){
+  anchorLinesOn = !anchorLinesOn;
+  const t = document.getElementById('togAnchorTrack');
+  t.className = 'tog-track ' + (anchorLinesOn ? 'on' : 'off');
+}
+
+function toggleSmoothing(){
+  smoothingOn = !smoothingOn;
+  const t = document.getElementById('togSmoothTrack');
+  t.className = 'tog-track ' + (smoothingOn ? 'on' : 'off');
+  // Snap smooth position to raw when turning off
+  if(!smoothingOn){ smoothX = rawX; smoothY = rawY; }
+  document.getElementById('alphaSliderWrap').style.opacity = smoothingOn ? '1' : '0.35';
+  document.getElementById('alphaSliderWrap').style.pointerEvents = smoothingOn ? 'auto' : 'none';
+}
+
+function updateAlpha(v){
+  ALPHA = parseFloat(v);
+  document.getElementById('alphaVal').textContent = ALPHA.toFixed(2);
+}
+
+function updateMaxRange(v){
+  const n = parseFloat(v);
+  // Update the JS-side filter constant (reassign module-level var)
+  window._dashMaxRange = n;
+  document.getElementById('maxRangeVal').textContent = n+'m';
+}
+
+function updateJump(v){
+  const n = parseFloat(v);
+  window._dashJump = n;
+  document.getElementById('jumpVal').textContent = n+'m';
+}
+
+// ═══════════════════════════════════════════════
+//  IMU Calibration
+// ═══════════════════════════════════════════════
+function calibrateIMU(){
+  // Record current raw yaw as the "north" reference.
+  // After calibration, calibratedYaw() = yaw - calibYawOffset
+  // So when the user is pointing north (their intended 0°), calibratedYaw() = 0°.
+  calibYawOffset = yaw;
+  const el = document.getElementById('calibStatus');
+  el.textContent = `Calibrated at ${yaw.toFixed(1)}°`;
+  el.style.color = 'var(--green)';
+  addEvent('IMU calibrated — North set', 'blue');
+  // Flash button
+  const btn = document.querySelector('[onclick="calibrateIMU()"]');
+  btn.textContent = '✓ Calibrated!';
+  btn.style.background = 'var(--green-d)';
+  btn.style.color = 'var(--green)';
+  btn.style.border = '1px solid rgba(53,208,127,0.4)';
+  setTimeout(()=>{
+    btn.textContent = '🧭 Calibrate North';
+    btn.style.background=''; btn.style.color=''; btn.style.border='';
+  }, 2000);
+}
+
+
+function loop(){
+  draw2();
+  requestAnimationFrame(loop);
+}
+loop();
+
+// ═══════════════════════════════════════════════
+//  Modal / UI helpers
+// ═══════════════════════════════════════════════
+function openModal2() { document.getElementById('modal2').style.display='flex'; }
+function closeModal2(){ document.getElementById('modal2').style.display='none'; }
+function togAF2(){
+  const f=document.getElementById('af2');
+  const d=document.getElementById('adisplay2');
+  const op=f.classList.toggle('open');
+  d.style.display=op?'none':'block';
+}
+</script>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- Patient Edit Modal                              -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="patientEditModal">
+ <div class="modal-box">
+  <div class="modal-title">✏️ Edit Patient Profile</div>
+  <div class="modal-sub">Changes apply immediately to the dashboard and report</div>
+
+  <div class="edit-section">
+   <div class="edit-section-title">Identity</div>
+   <div class="edit-row">
+    <div class="edit-field"><label class="edit-label">Full Name</label><input class="edit-input" id="ep-name" value="Leela Krishnan"></div>
+    <div class="edit-field"><label class="edit-label">Avatar Emoji</label><input class="edit-input" id="ep-avatar" value="👵" maxlength="4"></div>
+   </div>
+   <div class="edit-row">
+    <div class="edit-field"><label class="edit-label">Tag ID</label><input class="edit-input" id="ep-tag" value="NW-017"></div>
+    <div class="edit-field"><label class="edit-label">Ward / Bed</label><input class="edit-input" id="ep-ward" value="ICU Ward — Bed 3"></div>
+   </div>
+  </div>
+
+  <div class="edit-section">
+   <div class="edit-section-title">Demographics</div>
+   <div class="edit-row">
+    <div class="edit-field"><label class="edit-label">Age</label><input class="edit-input" id="ep-age" value="84 yrs"></div>
+    <div class="edit-field"><label class="edit-label">Gender</label>
+     <select class="edit-input" id="ep-gender"><option>Female</option><option>Male</option><option>Other</option></select>
+    </div>
+   </div>
+   <div class="edit-row">
+    <div class="edit-field"><label class="edit-label">Blood Group</label>
+     <select class="edit-input" id="ep-blood"><option>B+</option><option>B-</option><option>A+</option><option>A-</option><option>O+</option><option>O-</option><option>AB+</option><option>AB-</option></select>
+    </div>
+    <div class="edit-field"><label class="edit-label">Admitted Date</label><input class="edit-input" id="ep-admitted" value="09 Mar 2026"></div>
+   </div>
+  </div>
+
+  <div class="edit-section">
+   <div class="edit-section-title">Clinical</div>
+   <div class="edit-row">
+    <div class="edit-field"><label class="edit-label">Doctor</label><input class="edit-input" id="ep-doctor" value="Dr. Anand Kumar"></div>
+    <div class="edit-field"><label class="edit-label">Medication Times</label><input class="edit-input" id="ep-medication" value="09:00, 14:00, 21:00"></div>
+   </div>
+   <div class="edit-row">
+    <div class="edit-field"><label class="edit-label">Diet</label><input class="edit-input" id="ep-diet" value="Soft / Low Salt"></div>
+    <div class="edit-field"><label class="edit-label">Allergies</label><input class="edit-input" id="ep-allergies" value="Penicillin"></div>
+   </div>
+   <div class="edit-row full">
+    <div class="edit-field"><label class="edit-label">Diagnosis</label><input class="edit-input" id="ep-diagnosis" value="Dementia, Hip fracture"></div>
+   </div>
+  </div>
+
+  <div class="edit-section">
+   <div class="edit-section-title">Risk Flags</div>
+   <div class="pill-editor">
+    <label class="pill-check"><input type="checkbox" id="flag-fall" checked><span style="color:var(--red)">⚠ Fall Risk</span></label>
+    <label class="pill-check"><input type="checkbox" id="flag-dementia" checked><span style="color:var(--amber)">Dementia</span></label>
+    <label class="pill-check"><input type="checkbox" id="flag-stable" checked><span style="color:var(--green)">Stable</span></label>
+    <label class="pill-check"><input type="checkbox" id="flag-mobility" checked><span style="color:var(--blue)">Mobility Aid</span></label>
+    <label class="pill-check"><input type="checkbox" id="flag-dnr"><span style="color:var(--red)">DNR</span></label>
+    <label class="pill-check"><input type="checkbox" id="flag-iso"><span style="color:var(--amber)">Isolation</span></label>
+   </div>
+  </div>
+
+  <div class="edit-section">
+   <div class="edit-section-title">Emergency Contact</div>
+   <div class="edit-row">
+    <div class="edit-field"><label class="edit-label">Name</label><input class="edit-input" id="ep-ecname" value="Rajan Krishnan (Son)"></div>
+    <div class="edit-field"><label class="edit-label">Phone</label><input class="edit-input" id="ep-ecphone" value="+91 94470 55321"></div>
+   </div>
+  </div>
+
+  <div class="edit-section">
+   <div class="edit-section-title" style="display:flex;justify-content:space-between;align-items:center">
+    Medical History / Notes
+    <button class="dbtn dbtn-ghost" style="font-size:0.6rem;padding:3px 9px" onclick="addHistoryEntry()">+ Add Entry</button>
+   </div>
+   <div id="historyEntries">
+    <div class="history-entry">
+     <div style="font-size:0.58rem;color:var(--muted);margin-bottom:4px" contenteditable="true" class="hist-date">09 Mar 2026 — Admission</div>
+     <textarea class="hist-text" rows="2">Admitted following fall at home. Hip fracture confirmed by X-ray. Started on pain management protocol.</textarea>
+     <button class="del-btn" onclick="this.parentElement.remove()">✕</button>
+    </div>
+    <div class="history-entry">
+     <div style="font-size:0.58rem;color:var(--muted);margin-bottom:4px" contenteditable="true" class="hist-date">11 Mar 2026 — Nursing Note</div>
+     <textarea class="hist-text" rows="2">Patient confused during night shift. Attempted to leave bed unassisted twice. Side rails kept up. Night sedation reviewed.</textarea>
+     <button class="del-btn" onclick="this.parentElement.remove()">✕</button>
+    </div>
+    <div class="history-entry">
+     <div style="font-size:0.58rem;color:var(--muted);margin-bottom:4px" contenteditable="true" class="hist-date">14 Mar 2026 — Doctor Review</div>
+     <textarea class="hist-text" rows="2">Responding well to physiotherapy. Dementia symptoms stable. Continue current medication plan. Review in 7 days.</textarea>
+     <button class="del-btn" onclick="this.parentElement.remove()">✕</button>
+    </div>
+   </div>
+  </div>
+
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+   <button class="dbtn dbtn-ghost" onclick="closePatientEdit()">✗ Cancel</button>
+   <button class="dbtn dbtn-blue"  onclick="savePatientEdit()">✓ Save Changes</button>
+  </div>
+ </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- Report Modal                                    -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="report-modal" id="reportModal">
+ <div class="report-box">
+  <div class="report-topbar">
+   <div class="report-topbar-title">📋 Patient Monitoring Report</div>
+   <div class="report-actions">
+    <button class="rpt-btn rpt-btn-pdf" onclick="downloadPDF()">⬇ Download PDF</button>
+    <button class="rpt-btn rpt-btn-close" onclick="closeReport()">✕ Close</button>
+   </div>
+  </div>
+  <div id="reportContent"><!-- filled by buildReport() --></div>
+ </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- Shape Label Popup (floating input)              -->
+<!-- ═══════════════════════════════════════════════ -->
+<input class="shape-label-input" id="shapeLabelInput" placeholder="Name (e.g. Storage Room)…" style="display:none" onkeydown="if(event.key==='Enter')confirmShapeLabel()">
+
+<script>
+// ═══════════════════════════════════════════════
+//  Patient Data Store (editable, persists in session)
+// ═══════════════════════════════════════════════
+const patientData = {
+  name:'Leela Krishnan', avatar:'👵', tag:'NW-017',
+  ward:'ICU Ward — Bed 3', age:'84 yrs', gender:'Female', blood:'B+',
+  admitted:'09 Mar 2026', doctor:'Dr. Anand Kumar',
+  medication:'09:00, 14:00, 21:00', diet:'Soft / Low Salt',
+  allergies:'Penicillin', diagnosis:'Dementia, Hip fracture',
+  ecname:'Rajan Krishnan (Son)', ecphone:'+91 94470 55321',
+  flags:{fall:true,dementia:true,stable:true,mobility:true,dnr:false,iso:false}
+};
+
+function openPatientEdit(){
+  // Populate fields from patientData
+  const s = str => document.getElementById(str);
+  s('ep-name').value      = patientData.name;
+  s('ep-avatar').value    = patientData.avatar;
+  s('ep-tag').value       = patientData.tag;
+  s('ep-ward').value      = patientData.ward;
+  s('ep-age').value       = patientData.age;
+  s('ep-gender').value    = patientData.gender;
+  s('ep-blood').value     = patientData.blood;
+  s('ep-admitted').value  = patientData.admitted;
+  s('ep-doctor').value    = patientData.doctor;
+  s('ep-medication').value= patientData.medication;
+  s('ep-diet').value      = patientData.diet;
+  s('ep-allergies').value = patientData.allergies;
+  s('ep-diagnosis').value = patientData.diagnosis;
+  s('ep-ecname').value    = patientData.ecname;
+  s('ep-ecphone').value   = patientData.ecphone;
+  Object.keys(patientData.flags).forEach(k=>{
+    const el = document.getElementById('flag-'+k);
+    if(el) el.checked = patientData.flags[k];
+  });
+  document.getElementById('patientEditModal').classList.add('open');
+}
+
+function closePatientEdit(){
+  document.getElementById('patientEditModal').classList.remove('open');
+}
+
+function savePatientEdit(){
+  const g = id => document.getElementById(id).value.trim();
+  patientData.name       = g('ep-name');
+  patientData.avatar     = g('ep-avatar');
+  patientData.tag        = g('ep-tag');
+  patientData.ward       = g('ep-ward');
+  patientData.age        = g('ep-age');
+  patientData.gender     = g('ep-gender');
+  patientData.blood      = g('ep-blood');
+  patientData.admitted   = g('ep-admitted');
+  patientData.doctor     = g('ep-doctor');
+  patientData.medication = g('ep-medication');
+  patientData.diet       = g('ep-diet');
+  patientData.allergies  = g('ep-allergies');
+  patientData.diagnosis  = g('ep-diagnosis');
+  patientData.ecname     = g('ep-ecname');
+  patientData.ecphone    = g('ep-ecphone');
+  ['fall','dementia','stable','mobility','dnr','iso'].forEach(k=>{
+    const el = document.getElementById('flag-'+k);
+    if(el) patientData.flags[k] = el.checked;
+  });
+
+  // Reflect in DOM
+  document.getElementById('patName').textContent = patientData.name;
+  document.getElementById('patTag').textContent  = 'TAG: '+patientData.tag+' · '+patientData.ward;
+  document.getElementById('patAvatar').childNodes[0].textContent = patientData.avatar;
+  document.getElementById('pd-age').textContent       = patientData.age;
+  document.getElementById('pd-gender').textContent    = patientData.gender;
+  document.getElementById('pd-blood').textContent     = patientData.blood;
+  document.getElementById('pd-admitted').textContent  = patientData.admitted;
+  document.getElementById('pd-doctor').textContent    = patientData.doctor;
+  document.getElementById('pd-diet').textContent      = patientData.diet;
+  document.getElementById('pd-medication').textContent= patientData.medication;
+  document.getElementById('pd-ward').textContent      = patientData.ward;
+  document.getElementById('pd-tag').textContent       = patientData.tag;
+  document.getElementById('pd-allergies').textContent = patientData.allergies;
+  document.getElementById('pd-diagnosis').textContent = patientData.diagnosis;
+
+  // Rebuild pills
+  const pillMap = {
+    fall: {cls:'mpill-red',  txt:'⚠ Fall Risk'},
+    dementia:{cls:'mpill-amb',txt:'Dementia'},
+    stable:{cls:'mpill-grn', txt:'Stable'},
+    mobility:{cls:'mpill-blue',txt:'Mobility Aid'},
+    dnr:{cls:'mpill-red',    txt:'DNR'},
+    iso:{cls:'mpill-amb',    txt:'Isolation'}
+  };
+  const pills = document.getElementById('metaPills');
+  pills.innerHTML = '';
+  Object.keys(patientData.flags).forEach(k=>{
+    if(!patientData.flags[k]) return;
+    const d = document.createElement('div');
+    d.className = 'mpill '+pillMap[k].cls;
+    d.textContent = pillMap[k].txt;
+    pills.appendChild(d);
+  });
+
+  // Update map legend
+  if(typeof draw2==='function') draw2();
+
+  addEvent('Patient profile updated', 'blue');
+  closePatientEdit();
+}
+
+function addHistoryEntry(){
+  const container = document.getElementById('historyEntries');
+  const now = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  const div = document.createElement('div');
+  div.className = 'history-entry';
+  div.innerHTML = `<div style="font-size:0.58rem;color:var(--muted);margin-bottom:4px" contenteditable="true" class="hist-date">${now} — New Entry</div>
+    <textarea class="hist-text" rows="2" placeholder="Enter clinical notes…"></textarea>
+    <button class="del-btn" onclick="this.parentElement.remove()">✕</button>`;
+  container.insertBefore(div, container.firstChild);
+  div.querySelector('textarea').focus();
+}
+
+// ═══════════════════════════════════════════════
+//  Report Generator
+// ═══════════════════════════════════════════════
+function getHistoryForReport(){
+  const entries = document.querySelectorAll('#historyEntries .history-entry');
+  return Array.from(entries).map(e=>({
+    date: e.querySelector('.hist-date')?.textContent || '—',
+    text: e.querySelector('.hist-text')?.value || ''
+  }));
+}
+
+function buildReport(){
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const timeStr = now.toLocaleTimeString('en-GB');
+  const history = getHistoryForReport();
+
+  // Current sensor snapshot
+  const posX = (typeof smoothX !== 'undefined') ? smoothX.toFixed(2)+'m' : '—';
+  const posY = (typeof smoothY !== 'undefined') ? smoothY.toFixed(2)+'m' : '—';
+  const heading = (typeof calibratedYaw === 'function') ? Math.round(calibratedYaw())+'°' : '—';
+  const rollV  = (typeof roll !=='undefined') ? roll.toFixed(1)+'°'  : '—';
+  const pitchV = (typeof pitch!=='undefined') ? pitch.toFixed(1)+'°' : '—';
+
+  const histHTML = history.map(h=>`
+    <div class="rpt-history-item">
+      <div class="rpt-hist-date">${h.date}</div>
+      <div class="rpt-hist-text">${h.text}</div>
+    </div>`).join('');
+
+  const flagsHTML = Object.keys(patientData.flags)
+    .filter(k=>patientData.flags[k])
+    .map(k=>{
+      const labels={fall:'⚠ Fall Risk',dementia:'Dementia',stable:'Stable',mobility:'Mobility Aid',dnr:'DNR',iso:'Isolation'};
+      const isAlert = k==='fall'||k==='dnr';
+      return `<span class="rpt-vital-chip ${isAlert?'alert':''}">${labels[k]||k}</span>`;
+    }).join('');
+
+  document.getElementById('reportContent').innerHTML = `
+    <div class="rpt-header">
+      <div>
+        <div class="rpt-logo">🌙 NightWatch<small>Geriatric Care Monitor</small></div>
+        <div style="font-size:0.7rem;color:#8090a8;margin-top:6px">${patientData.ward}</div>
+      </div>
+      <div class="rpt-date">
+        <div style="font-weight:700;color:#1a1f2e">${dateStr}</div>
+        <div>${timeStr}</div>
+        <div style="margin-top:4px;font-size:0.65rem;color:#8090a8">Generated by NightWatch v4</div>
+      </div>
+    </div>
+
+    <div class="rpt-section">
+      <div class="rpt-section-title">Patient Identity</div>
+      <div class="rpt-grid">
+        <div class="rpt-cell"><div class="rpt-cell-l">Name</div><div class="rpt-cell-v">${patientData.name}</div></div>
+        <div class="rpt-cell"><div class="rpt-cell-l">Age / Gender</div><div class="rpt-cell-v">${patientData.age} · ${patientData.gender}</div></div>
+        <div class="rpt-cell"><div class="rpt-cell-l">Blood Group</div><div class="rpt-cell-v">${patientData.blood}</div></div>
+        <div class="rpt-cell"><div class="rpt-cell-l">Tag ID</div><div class="rpt-cell-v">${patientData.tag}</div></div>
+        <div class="rpt-cell"><div class="rpt-cell-l">Admitted</div><div class="rpt-cell-v">${patientData.admitted}</div></div>
+        <div class="rpt-cell"><div class="rpt-cell-l">Doctor</div><div class="rpt-cell-v">${patientData.doctor}</div></div>
+        <div class="rpt-cell"><div class="rpt-cell-l">Diet</div><div class="rpt-cell-v">${patientData.diet}</div></div>
+        <div class="rpt-cell"><div class="rpt-cell-l">Medication</div><div class="rpt-cell-v">${patientData.medication}</div></div>
+        <div class="rpt-cell"><div class="rpt-cell-l">Allergies</div><div class="rpt-cell-v" style="color:#cc2222">${patientData.allergies}</div></div>
+      </div>
+      <div style="margin-top:10px">
+        <div class="rpt-cell-l" style="margin-bottom:6px">Diagnosis</div>
+        <div style="font-size:0.8rem;color:#1a1f2e;font-weight:600">${patientData.diagnosis}</div>
+      </div>
+      <div style="margin-top:10px">
+        <div class="rpt-cell-l" style="margin-bottom:6px">Risk Flags</div>
+        <div class="rpt-vitals-row">${flagsHTML}</div>
+      </div>
+    </div>
+
+    <div class="rpt-section">
+      <div class="rpt-section-title">Emergency Contact</div>
+      <div class="rpt-grid" style="grid-template-columns:1fr 1fr">
+        <div class="rpt-cell"><div class="rpt-cell-l">Name</div><div class="rpt-cell-v">${patientData.ecname}</div></div>
+        <div class="rpt-cell"><div class="rpt-cell-l">Phone</div><div class="rpt-cell-v">${patientData.ecphone}</div></div>
+      </div>
+    </div>
+
+    <div class="rpt-section">
+      <div class="rpt-section-title">Last Known Sensor Readings (at report time)</div>
+      <div class="rpt-grid">
+        <div class="rpt-cell"><div class="rpt-cell-l">Position X</div><div class="rpt-cell-v">${posX}</div></div>
+        <div class="rpt-cell"><div class="rpt-cell-l">Position Y</div><div class="rpt-cell-v">${posY}</div></div>
+        <div class="rpt-cell"><div class="rpt-cell-l">Heading</div><div class="rpt-cell-v">${heading}</div></div>
+        <div class="rpt-cell"><div class="rpt-cell-l">Roll</div><div class="rpt-cell-v">${rollV}</div></div>
+        <div class="rpt-cell"><div class="rpt-cell-l">Pitch</div><div class="rpt-cell-v">${pitchV}</div></div>
+        <div class="rpt-cell"><div class="rpt-cell-l">A1 Distance</div><div class="rpt-cell-v">${typeof d1!=='undefined'&&d1>0?d1.toFixed(2)+'m':'—'}</div></div>
+      </div>
+    </div>
+
+    <div class="rpt-section">
+      <div class="rpt-section-title">Medical History &amp; Clinical Notes</div>
+      ${history.length ? histHTML : '<div style="color:#8090a8;font-size:0.75rem">No history entries recorded.</div>'}
+    </div>
+
+    <div style="margin-top:24px;padding-top:14px;border-top:1px solid #e5e7ef;font-size:0.62rem;color:#8090a8;text-align:center">
+      This report was auto-generated by NightWatch Care Monitoring System · ${patientData.ward} · ${dateStr}
+    </div>`;
+}
+
+function openReport(){
+  buildReport();
+  document.getElementById('reportModal').classList.add('open');
+}
+function closeReport(){
+  document.getElementById('reportModal').classList.remove('open');
+}
+
+function downloadPDF(){
+  buildReport();
+  const content = document.getElementById('reportContent').innerHTML;
+  const name = patientData.name.replace(/\s+/g,'_');
+  const date = new Date().toISOString().split('T')[0];
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>NightWatch Report — ${patientData.name}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Plus Jakarta Sans',sans-serif;color:#111;background:#fff;padding:32px;}
+    .rpt-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #e5e7ef;}
+    .rpt-logo{font-size:1.1rem;font-weight:800;color:#1a1f2e;}
+    .rpt-logo small{display:block;font-size:0.6rem;color:#8090a8;letter-spacing:1.5px;text-transform:uppercase;font-weight:400;}
+    .rpt-date{font-size:0.7rem;color:#8090a8;text-align:right;}
+    .rpt-section{margin-bottom:18px;}
+    .rpt-section-title{font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;color:#8090a8;font-weight:700;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid #e5e7ef;}
+    .rpt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+    .rpt-cell{background:#f8f9fc;border-radius:8px;padding:8px 10px;}
+    .rpt-cell-l{font-size:0.6rem;color:#8090a8;text-transform:uppercase;letter-spacing:.5px;}
+    .rpt-cell-v{font-size:0.82rem;font-weight:700;color:#1a1f2e;margin-top:2px;}
+    .rpt-history-item{border-left:3px solid #4f88ff;padding:6px 10px;margin-bottom:8px;background:#f8f9fc;border-radius:0 6px 6px 0;}
+    .rpt-hist-date{font-size:0.62rem;color:#8090a8;}
+    .rpt-hist-text{font-size:0.75rem;color:#1a1f2e;margin-top:2px;}
+    .rpt-vitals-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+    .rpt-vital-chip{background:#f0f4ff;border:1px solid #d0dcff;border-radius:20px;padding:3px 10px;font-size:0.68rem;color:#3355cc;}
+    .rpt-vital-chip.alert{background:#fff0f0;border-color:#ffcccc;color:#cc2222;}
+    @media print{body{padding:16px;}}
+  </style></head><body>${content}</body></html>`;
+
+  // Open in new tab and trigger print-to-PDF
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(()=>{ w.print(); }, 600);
+}
+
+// ═══════════════════════════════════════════════
+//  Enhanced Canvas Drawing System
+// ═══════════════════════════════════════════════
+// Shape drawing state
+let drawState = {
+  dragging: false,
+  startX: 0, startY: 0,
+  ghost: null,          // {x,y,w,h} for live preview rect
+  pendingShape: null,   // shape waiting for label
+  selectedIdx: -1,      // index in objs2 for select tool
+  dragOffX: 0, dragOffY: 0
+};
+
+// Extended object types
+const SHAPE_ICONS = {bed:'🛏',chair:'🪑',door:'🚪',bathroom:'🚿',table:'🪞',nurse:'👩‍⚕️',xhair:'✛'};
+const SHAPE_COLORS = {
+  rect:  {stroke:'#4f88ff', fill:'rgba(79,136,255,0.08)'},
+  zone:  {stroke:'#00c8aa', fill:'rgba(0,200,170,0.07)'},
+};
+
+// Override the existing tog2 to also reset draw state
+function tog2(){
+  em2=!em2;
+  document.getElementById('tb2').classList.toggle('on',em2);
+  document.getElementById('editRoomBtn').textContent = em2?'✓ Done':'✏️ Edit Room';
+  if(!em2){ drawState.dragging=false; drawState.ghost=null; drawState.selectedIdx=-1; }
+  c2.style.cursor = em2 ? 'crosshair' : 'default';
+}
+
+function st2(t){
+  ct2=t;
+  document.querySelectorAll('.etb').forEach(b=>b.classList.remove('sel'));
+  const el=document.getElementById('eb-'+t); if(el)el.classList.add('sel');
+  c2.style.cursor = (t==='select') ? 'pointer' : 'crosshair';
+  drawState.selectedIdx=-1;
+}
+
+function clearAllShapes(){
+  if(!confirm('Clear all room objects and shapes?')) return;
+  objs2=[];
+}
+
+// ── Mouse events ─────────────────────────────────────────────
+c2.addEventListener('mousedown', e=>{
+  if(!em2) return;
+  const r=c2.getBoundingClientRect();
+  const sx=c2.width/r.width, sy=c2.height/r.height;
+  const cx=(e.clientX-r.left)*sx, cy=(e.clientY-r.top)*sy;
+
+  if(ct2==='rect'||ct2==='zone'){
+    drawState.dragging=true;
+    drawState.startX=cx; drawState.startY=cy;
+    drawState.ghost=null;
+    return;
+  }
+
+  if(ct2==='select'){
+    // Find object under cursor
+    drawState.selectedIdx=-1;
+    for(let i=objs2.length-1;i>=0;i--){
+      const o=objs2[i];
+      if(o.type==='rect'||o.type==='zone'){
+        if(cx>=o.x&&cx<=o.x+o.w&&cy>=o.y&&cy<=o.y+o.h){
+          drawState.selectedIdx=i;
+          drawState.dragging=true;
+          drawState.dragOffX=cx-o.x;
+          drawState.dragOffY=cy-o.y;
+          break;
+        }
+      } else {
+        if(Math.hypot(cx-o.x,cy-o.y)<20){
+          drawState.selectedIdx=i;
+          drawState.dragging=true;
+          drawState.dragOffX=cx-o.x;
+          drawState.dragOffY=cy-o.y;
+          break;
+        }
+      }
+    }
+    return;
+  }
+
+  if(ct2==='erase'){
+    objs2=objs2.filter(o=>{
+      if(o.type==='rect'||o.type==='zone'){
+        return !(cx>=o.x-4&&cx<=o.x+o.w+4&&cy>=o.y-4&&cy<=o.y+o.h+4);
+      }
+      return Math.hypot(o.x-cx,o.y-cy)>24;
+    });
+    return;
+  }
+
+  if(ct2==='label'){
+    // Find shape under cursor to rename
+    for(let i=objs2.length-1;i>=0;i--){
+      const o=objs2[i];
+      const hit=(o.type==='rect'||o.type==='zone')
+        ? (cx>=o.x&&cx<=o.x+o.w&&cy>=o.y&&cy<=o.y+o.h)
+        : Math.hypot(cx-o.x,cy-o.y)<24;
+      if(hit){
+        showLabelInput(i, e.clientX, e.clientY);
+        return;
+      }
+    }
+    return;
+  }
+
+  // Place icon object
+  objs2.push({type:ct2, x:cx, y:cy, label:''});
+});
+
+c2.addEventListener('mousemove', e=>{
+  if(!em2||!drawState.dragging) return;
+  const r=c2.getBoundingClientRect();
+  const sx=c2.width/r.width, sy=c2.height/r.height;
+  const cx=(e.clientX-r.left)*sx, cy=(e.clientY-r.top)*sy;
+
+  if((ct2==='rect'||ct2==='zone')&&drawState.dragging){
+    drawState.ghost={
+      x:Math.min(cx,drawState.startX), y:Math.min(cy,drawState.startY),
+      w:Math.abs(cx-drawState.startX), h:Math.abs(cy-drawState.startY)
+    };
+    return;
+  }
+
+  if(ct2==='select'&&drawState.selectedIdx>=0){
+    const o=objs2[drawState.selectedIdx];
+    if(o.type==='rect'||o.type==='zone'){
+      o.x=cx-drawState.dragOffX;
+      o.y=cy-drawState.dragOffY;
+    } else {
+      o.x=cx; o.y=cy;
+    }
+  }
+});
+
+c2.addEventListener('mouseup', e=>{
+  if(!em2) return;
+  const r=c2.getBoundingClientRect();
+  const sx=c2.width/r.width, sy=c2.height/r.height;
+  const cx=(e.clientX-r.left)*sx, cy=(e.clientY-r.top)*sy;
+
+  if((ct2==='rect'||ct2==='zone')&&drawState.dragging&&drawState.ghost){
+    const g=drawState.ghost;
+    if(g.w>10&&g.h>10){
+      const newObj={type:ct2, x:g.x, y:g.y, w:g.w, h:g.h, label:'', color:SHAPE_COLORS[ct2]};
+      objs2.push(newObj);
+      drawState.pendingShape=objs2.length-1;
+      showLabelInput(objs2.length-1, e.clientX, e.clientY);
+    }
+  }
+  drawState.dragging=false;
+  drawState.ghost=null;
+  if(ct2!=='select') drawState.selectedIdx=-1;
+});
+
+// Touch support
+c2.addEventListener('touchstart', e=>{ e.preventDefault(); const t=e.touches[0]; c2.dispatchEvent(new MouseEvent('mousedown',{clientX:t.clientX,clientY:t.clientY})); }, {passive:false});
+c2.addEventListener('touchmove',  e=>{ e.preventDefault(); const t=e.touches[0]; c2.dispatchEvent(new MouseEvent('mousemove',{clientX:t.clientX,clientY:t.clientY})); }, {passive:false});
+c2.addEventListener('touchend',   e=>{ e.preventDefault(); const t=e.changedTouches[0]; c2.dispatchEvent(new MouseEvent('mouseup',{clientX:t.clientX,clientY:t.clientY})); }, {passive:false});
+
+// ── Shape label input ────────────────────────────────────────
+let labelTargetIdx = -1;
+
+function showLabelInput(idx, screenX, screenY){
+  labelTargetIdx = idx;
+  const inp = document.getElementById('shapeLabelInput');
+  inp.value = objs2[idx].label || '';
+  inp.style.display = 'block';
+  // Position relative to canvas container
+  const cr = c2.parentElement.getBoundingClientRect();
+  inp.style.left = Math.min(screenX - cr.left, cr.width - 170) + 'px';
+  inp.style.top  = (screenY - cr.top + 8) + 'px';
+  inp.style.position = 'absolute';
+  inp.focus();
+  inp.select();
+}
+
+function confirmShapeLabel(){
+  const inp = document.getElementById('shapeLabelInput');
+  if(labelTargetIdx>=0 && objs2[labelTargetIdx]){
+    objs2[labelTargetIdx].label = inp.value;
+  }
+  inp.style.display='none';
+  labelTargetIdx=-1;
+}
+document.getElementById('shapeLabelInput').addEventListener('blur', confirmShapeLabel);
+
+// ── Draw shapes in canvas ─────────────────────────────────────
+// Override the objs2.forEach block by patching the draw2 call
+// We hook into the draw loop by replacing the entire draw2 fn below
+
+const _origDraw2Ref = draw2; // save reference (defined earlier in page)
+
+// Patch draw2 to also render shapes with labels/dims
+const _realDraw2 = draw2;
+window.draw2 = function(){
+  _realDraw2();
+  drawShapeOverlay();
+};
+
+function drawShapeOverlay(){
+  const W=c2.width, H=c2.height, pad=32;
+  const rW=W-pad*2, rH=H-pad*2;
+
+  objs2.forEach((o,i)=>{
+    if(o.type!=='rect'&&o.type!=='zone') return;
+    const sc = o.color || SHAPE_COLORS[o.type] || SHAPE_COLORS.rect;
+    const isSelected = (em2 && drawState.selectedIdx===i);
+
+    ctx.save();
+    ctx.strokeStyle = isSelected ? '#fff' : sc.stroke;
+    ctx.lineWidth   = isSelected ? 2 : 1.5;
+    ctx.fillStyle   = sc.fill;
+    if(o.type==='zone') ctx.setLineDash([5,4]);
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(o.x,o.y,o.w,o.h,4) : ctx.rect(o.x,o.y,o.w,o.h);
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Label
+    if(o.label){
+      ctx.font='bold 10px Plus Jakarta Sans';
+      ctx.fillStyle=sc.stroke;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(o.label, o.x+o.w/2, o.y+o.h/2);
+    }
+
+    // Dimensions (show in edit mode)
+    if(em2){
+      // Real-world dims using room scale
+      const mW = (o.w/rW*roomW).toFixed(1);
+      const mH = (o.h/rH*roomH).toFixed(1);
+      ctx.font='9px Fira Code,monospace';
+      ctx.fillStyle='rgba(255,255,255,0.55)';
+      ctx.textAlign='center'; ctx.textBaseline='top';
+      ctx.fillText(`${mW}m × ${mH}m`, o.x+o.w/2, o.y+o.h+2);
+      // Top-left coordinate
+      const cx_m = ((o.x-pad)/rW*roomW).toFixed(1);
+      const cy_m = (roomH-(o.y-pad)/rH*roomH).toFixed(1);
+      ctx.textAlign='left'; ctx.textBaseline='bottom';
+      ctx.fillText(`(${cx_m},${cy_m})`, o.x+2, o.y-1);
+    }
+
+    ctx.restore();
+  });
+
+  // Ghost rectangle during drag
+  if(drawState.ghost && em2){
+    const g=drawState.ghost;
+    const sc = SHAPE_COLORS[ct2] || SHAPE_COLORS.rect;
+    ctx.save();
+    ctx.strokeStyle=sc.stroke; ctx.lineWidth=1.5;
+    ctx.fillStyle=sc.fill; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.rect(g.x,g.y,g.w,g.h); ctx.fill(); ctx.stroke();
+    ctx.setLineDash([]);
+    // Live size label
+    const mW=((g.w)/rW*roomW).toFixed(1), mH=((g.h)/rH*roomH).toFixed(1);
+    ctx.font='bold 10px Plus Jakarta Sans'; ctx.fillStyle='#fff';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(`${mW}m × ${mH}m`, g.x+g.w/2, g.y+g.h/2);
+    ctx.restore();
+  }
+}
+</script>
+</body>
+</html>
