@@ -1,10 +1,5 @@
 # NightWatch — Privacy-Preserving Elderly Care Monitoring System
 
-> **Final Year B.Tech Project** | APJ Abdul Kalam Technological University  
-> College of Engineering Kallooppara | 2025–2026  
-> Department of Electronics & Communication Engineering
-
----
 
 ## Overview
 
@@ -213,7 +208,6 @@ See [`docs/DEPLOY.md`](docs/DEPLOY.md) for full deployment reference including s
 | **Ann Maria Francis** | Sensor integration support, testing |
 | **Pranav V Manoj** | Wearable tag hardware, mechanical design & node enclosures |
 
-**Guide:** Ms. Arya S, Department of ECE, College of Engineering Kallooppara
 
 ---
 
