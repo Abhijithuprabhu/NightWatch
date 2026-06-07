@@ -1,6 +1,5 @@
 # NightWatch — Privacy-Preserving Elderly Care Monitoring System
 
-
 ## Overview
 
 **NightWatch** is a camera-free, privacy-first elderly care monitoring system that detects **indoor location**, **fall events**, and **sleep vitals** using a multi-sensor fusion approach — all without any camera or microphone.
@@ -12,7 +11,17 @@ The system combines **UWB-based indoor localization**, **60 GHz mmWave radar sen
 
 ---
 
+## Dashboard
+
+![NightWatch Dashboard](hardware/images/dashboard_screenshot.png)
+
+*Real-time caregiver dashboard — shows patient location on room map, UWB anchor ranges, IMU orientation (roll/pitch/yaw), mmWave presence and fall state, and live event log.*
+
+---
+
 ## System Architecture
+
+![System Overview](hardware/images/system_overview.png)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -20,7 +29,7 @@ The system combines **UWB-based indoor localization**, **60 GHz mmWave radar sen
 │                                                             │
 │  ┌──────────────────────┐    ┌────────────────────────────┐ │
 │  │  Wearable UWB Tag    │    │   mmWave Radar Node        │ │
-│  │  (ESP32 + DW1000)    │    │   (ESP32 + DFRobot C1001)  │ │
+│  │  (Vacus ESP32-DW1000)│    │   (ESP32 + DFRobot C1001)  │ │
 │  │  + ISM330DHCX IMU    │    │                            │ │
 │  │  + MMC5983MA Mag     │    │  Fall detection (MODE_FALL)│ │
 │  │                      │    │  Sleep monitoring          │ │
@@ -65,18 +74,44 @@ The system combines **UWB-based indoor localization**, **60 GHz mmWave radar sen
 
 ---
 
-## Hardware Bill of Materials
+## Hardware
+
+### Bill of Materials
 
 | Component | Module | Purpose | Qty |
 |---|---|---|---|
 | UWB Transceiver | Vacus ESP32-DW1000 | Anchor + Tag nodes | 3 |
 | mmWave Radar | DFRobot SEN0623 (C1001) | Fall & sleep detection | 1 |
-| IMU | SparkFun ISM330DHCX | Accelerometer + Gyroscope | 1 |
-| Magnetometer | SparkFun MMC5983MA | Tilt-compensated heading | 1 |
+| IMU + Magnetometer | Smartelex 9DoF (ISM330DHCX + MMC5983MA) | Orientation & tilt | 1 |
 | Hub | Raspberry Pi 4 Model B 4GB | Backend + Dashboard | 1 |
 | Receiver | Generic ESP32 (WROOM/WROVER) | ESP-NOW ↔ Serial bridge | 1 |
+| Power (mmWave) | TP4056 + 18650 Li-ion + 3.7V→5V step-up | mmWave node power | 1 |
+| Power (Tag) | Li-Po charger + 1000mAh Li-Po + 3.7V→5V step-up | Wearable tag power | 1 |
 
 **Estimated BOM: ₹33,162**
+
+---
+
+### Circuit Diagrams
+
+#### Wearable UWB Tag
+*Vacus ESP32-DW1000 + Smartelex 9DoF IMU, powered by 1000mAh Li-Po with USB-C charging*
+
+![Wearable Tag Wiring](hardware/images/wearable_tag_wiring.jpeg)
+
+---
+
+#### UWB Anchor Node
+*Vacus ESP32-DW1000, powered by 18650 Li-ion with TP4056 charging + 3.7V→5V step-up*
+
+![UWB Anchor Wiring](hardware/images/uwb_anchor_wiring.jpeg)
+
+---
+
+#### mmWave Radar Node
+*ESP32-WROOM + DFRobot C1001 (60 GHz), UART connection on GPIO16/17, powered by 18650 Li-ion*
+
+![mmWave Node Wiring](hardware/images/mmwave_node_wiring.jpeg)
 
 ---
 
@@ -86,26 +121,24 @@ The system combines **UWB-based indoor localization**, **60 GHz mmWave radar sen
 nightwatch/
 ├── firmware/
 │   ├── uwb/
-│   │   ├── anchor1/anchor1.ino       ← UWB Anchor 1 (Addr: 83:17:...)
-│   │   └── anchor2/anchor2.ino       ← UWB Anchor 2 (Addr: 84:17:...)
+│   │   ├── anchor1/anchor1.ino        ← UWB Anchor 1 (Addr: 83:17:...)
+│   │   └── anchor2/anchor2.ino        ← UWB Anchor 2 (Addr: 84:17:...)
 │   ├── tag/
-│   │   └── firmware_tag_espnow.ino   ← Wearable tag: UWB + IMU + ESP-NOW
+│   │   └── firmware_tag_espnow.ino    ← Wearable tag: UWB + IMU + ESP-NOW
 │   ├── mmwave/
-│   │   └── firmware_mmwave_espnow.ino← mmWave node: DFRobot C1001 + ESP-NOW
+│   │   └── firmware_mmwave_espnow.ino ← mmWave node: DFRobot C1001 + ESP-NOW
 │   └── receiver/
-│       └── receiver_espnow.ino       ← Receiver: ESP-NOW → Serial bridge
+│       └── receiver_espnow.ino        ← Receiver: ESP-NOW → Serial bridge
 ├── dashboard/
-│   ├── app.py                        ← Flask + Socket.IO backend
-│   ├── requirements.txt              ← Python dependencies
-│   ├── templates/
-│   │   └── index.html                ← NightWatch web dashboard (v5)
-│   └── static/                       ← (CSS/assets if needed)
+│   ├── app.py                         ← Flask + Socket.IO backend
+│   ├── requirements.txt               ← Python dependencies
+│   └── templates/index.html           ← NightWatch web dashboard (v5)
 ├── hardware/
-│   └── images/                       ← Circuit diagrams, photos
+│   └── images/                        ← Circuit diagrams and screenshots
 ├── docs/
-│   └── DEPLOY.md                     ← Pi deployment quick reference
+│   └── DEPLOY.md                      ← Pi deployment quick reference
 ├── scripts/
-│   └── setup_pi.sh                   ← One-shot Pi setup script
+│   └── setup_pi.sh                    ← One-shot Pi setup script
 └── README.md
 ```
 
@@ -141,7 +174,7 @@ DFRobot SEN0623 (C1001) radar running two modes switchable at runtime:
 
 | Mode | Data |
 |---|---|
-| `MODE_FALL` | presence, fall_state (3-state machine) |
+| `MODE_FALL` | presence, fall_state (3-state machine: IDLE→IMPACT→POSTFALL) |
 | `MODE_SLEEP` | presence, sleep_state, respiration rate, heart rate |
 
 **JSON transmitted (every 50ms):**
@@ -153,7 +186,7 @@ DFRobot SEN0623 (C1001) radar running two modes switchable at runtime:
 ### Receiver (`firmware/receiver/receiver_espnow.ino`)
 Generic ESP32 connected to the Pi via USB. Aggregates ESP-NOW packets from tag and mmWave node, forwards them as JSON lines over serial. Also relays `MODE_FALL`/`MODE_SLEEP` commands from the Pi back to the mmWave ESP32.
 
-> **Setup:** Flash receiver first, copy its printed MAC address into `RECEIVER_MAC[]` in both `firmware_tag_espnow.ino` and `firmware_mmwave_espnow.ino`.
+> **Setup:** Flash receiver first → open Serial Monitor → copy the printed MAC → paste into `RECEIVER_MAC[]` in both `firmware_tag_espnow.ino` and `firmware_mmwave_espnow.ino`.
 
 ---
 
@@ -161,19 +194,19 @@ Generic ESP32 connected to the Pi via USB. Aggregates ESP-NOW packets from tag a
 
 ### Flask + Socket.IO (`dashboard/app.py`)
 
-- Serial port auto-detected (`/dev/ttyUSB0`, `ttyUSB1`, `ttyACM0`, `ttyACM1`)  
-- Separate `gevent`-based background thread reads serial, parses JSON, emits to browser via Socket.IO  
-- `/set_mode?mode=MODE_FALL` or `MODE_SLEEP` — browser triggers radar mode switch  
-- `/status` — health check endpoint  
+- Serial port auto-detected (`/dev/ttyUSB0`, `ttyUSB1`, `ttyACM0`, `ttyACM1`)
+- Gevent-based background thread reads serial, parses JSON, emits to browser via Socket.IO
+- `/set_mode?mode=MODE_FALL` or `MODE_SLEEP` — browser triggers radar mode switch
+- `/status` — health check endpoint
 
 ### Deployment (Raspberry Pi 4)
 
 ```bash
 # 1. Clone repo onto the Pi
-git clone https://github.com/<your-username>/nightwatch.git
+git clone https://github.com/Abhijithuprabhu/NightWatch.git
 
 # 2. Run one-time setup (installs deps, hotspot, systemd service)
-cd nightwatch
+cd NightWatch
 sudo bash scripts/setup_pi.sh
 
 # 3. Reboot
@@ -189,11 +222,11 @@ See [`docs/DEPLOY.md`](docs/DEPLOY.md) for full deployment reference including s
 
 ## Flashing Order
 
-1. Flash `receiver_espnow.ino` → open Serial Monitor → note printed MAC  
-2. Paste MAC into `firmware_tag_espnow.ino` and `firmware_mmwave_espnow.ino` as `RECEIVER_MAC[]`  
-3. Flash `anchor1.ino` and `anchor2.ino`  
-4. Flash `firmware_tag_espnow.ino` (wearable tag)  
-5. Flash `firmware_mmwave_espnow.ino` (mmWave node)  
+1. Flash `receiver_espnow.ino` → open Serial Monitor → note printed MAC
+2. Paste MAC into `firmware_tag_espnow.ino` and `firmware_mmwave_espnow.ino` as `RECEIVER_MAC[]`
+3. Flash `anchor1.ino` and `anchor2.ino`
+4. Flash `firmware_tag_espnow.ino` (wearable tag)
+5. Flash `firmware_mmwave_espnow.ino` (mmWave node)
 6. All nodes must be on the same ESP-NOW WiFi channel (ch 7 — matching Pi hotspot)
 
 ---
@@ -207,6 +240,7 @@ See [`docs/DEPLOY.md`](docs/DEPLOY.md) for full deployment reference including s
 | **Sharon Joe Shaji** | Dashboard, Documentation & Version Control |
 | **Ann Maria Francis** | Sensor integration support, testing |
 | **Pranav V Manoj** | Wearable tag hardware, mechanical design & node enclosures |
+
 
 
 ---
@@ -225,7 +259,6 @@ See [`docs/DEPLOY.md`](docs/DEPLOY.md) for full deployment reference including s
 
 ### Arduino Libraries
 - `DW1000` — Thotro/arduino-dw1000
-- `DW1000Ranging` — included with above
 - `DFRobot_HumanDetection` — DFRobot SEN0623 library
 - `SparkFun ISM330DHCX` — SparkFun 9DoF IMU library
 - `SparkFun MMC5983MA` — SparkFun magnetometer library
