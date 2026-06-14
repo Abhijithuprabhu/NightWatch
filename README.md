@@ -252,7 +252,7 @@ See [`docs/DEPLOY.md`](docs/DEPLOY.md) for full deployment reference including s
 |---|---|
 | **Abhijith U Prabhu** | Project Lead — UWB system, ESP32 firmware, RPi integration, system architecture & Version Control |
 | **Adwait Biju Nair** | Power Systems & mmWave Lead — power management, DFRobot C1001 integration |
-| **Sharon Joe Shaji** | Dashboard, Documentation & Version Control |
+| **Sharon Joe Shaji** | Dashboard, Documentation  |
 | **Ann Maria Francis** | Sensor integration support, testing |
 | **Pranav V Manoj** | Wearable tag hardware, mechanical design & node enclosures |
 
